@@ -490,6 +490,7 @@ final class StripScene: SKScene {
     // MARK: Celebrations & affection
 
     private var seenDex = -1
+    private var seenAI = 0
     private var seenTheme = -1
 
     private func celebrations(_ store: GameStore) {
@@ -501,6 +502,12 @@ final class StripScene: SKScene {
             FX.burst(fxLayer, at: at, color: NSColor(hex: 0x9CF4FF), count: 16, speed: 60, life: 0.8, size: 0.1)
         }
         if store.progress.theme != seenTheme { applyTheme(store.progress.theme) }
+        if store.aiActions != seenAI {
+            seenAI = store.aiActions
+            let x = heroes.map(\.root.position.x).max() ?? 200
+            FX.label(textLayer, "🤖 \(store.lastAIText)", at: CGPoint(x: min(x + 40, 470), y: 86),
+                     color: NSColor(hex: 0x9CF4FF), size: 11, rise: 4, life: 3.2, pop: 1.1)
+        }
         if store.legendaryDrops != seenLegendary {
             seenLegendary = store.legendaryDrops
             FX.legendary(fxLayer, at: CGPoint(x: 300, y: Self.groundY))

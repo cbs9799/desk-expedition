@@ -63,6 +63,8 @@ struct MenuView: View {
                 }
             }
 
+            AIConnectSection()
+
             HStack {
                 Button("원정 본부 열기", action: onOpenHQ).buttonStyle(GameButtonStyle())
                 Spacer()
@@ -79,5 +81,57 @@ struct MenuView: View {
         .frame(width: 300)
         .background(Theme.bg)
         .foregroundStyle(Theme.text)
+    }
+}
+
+/// "AI 원정대장" — connect a subscription AI (Claude, Codex…) over MCP and watch what it does.
+struct AIConnectSection: View {
+    @Environment(GameStore.self) private var store
+    @State private var copied: String?
+
+    private var exe: String { Bundle.main.executablePath ?? "/Applications/DeskExpedition.app/Contents/MacOS/DeskExpedition" }
+
+    private var snippets: [(String, String)] {[
+        ("Claude Code", "claude mcp add --scope user desk-expedition -- \"\(exe)\" --mcp"),
+        ("Claude Desktop", """
+        "desk-expedition": { "command": "\(exe)", "args": ["--mcp"] }
+        """),
+        ("Codex", """
+        [mcp_servers.desk-expedition]
+        command = "\(exe)"
+        args = ["--mcp"]
+        """),
+        ("자동 플레이", "bash \"\(Bundle.main.resourcePath ?? "/Applications/DeskExpedition.app/Contents/Resources")/ai-autoplay.sh\" install claude 30"),
+    ]}
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Circle().fill(store.aiConnected ? Color(hex: 0x6BE36F) : Color.white.opacity(0.25)).frame(width: 7, height: 7)
+                Text("AI 원정대장").font(.system(size: 12, weight: .heavy, design: .rounded))
+                Spacer()
+                Text(store.aiConnected ? "연결됨" : "대기 중")
+                    .font(.system(size: 10, weight: .bold, design: .rounded)).foregroundStyle(Theme.dim)
+            }
+            Text("구독 중인 AI(Claude·Codex 등)에 연결하면 AI가 레벨업·장비·가방·지역·이사를 알아서 해요. 아래 설정을 AI 앱에 붙여 넣고, AI에게 \"책상 원정대 돌봐 줘\"라고 하세요.")
+                .font(.system(size: 10, design: .rounded)).foregroundStyle(Theme.dim)
+                .fixedSize(horizontal: false, vertical: true)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 4), GridItem(.flexible(), spacing: 4)], spacing: 4) {
+                ForEach(snippets, id: \.0) { name, text in
+                    Button(copied == name ? "복사됨" : name) {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(text, forType: .string)
+                        copied = name
+                    }
+                    .buttonStyle(GameButtonStyle(color: Theme.panelHi, compact: true))
+                }
+            }
+            ForEach(store.aiLog.suffix(3).reversed()) { line in
+                Text("🤖 \(line.text)").font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color(hex: 0x9CF4FF)).lineLimit(2)
+            }
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.panel))
     }
 }

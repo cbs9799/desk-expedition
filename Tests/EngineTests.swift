@@ -174,4 +174,61 @@ final class EngineTests: XCTestCase {
         let round = try JSONDecoder().decode(Progress.self, from: JSONEncoder().encode(p))
         XCTAssertEqual(round, p)
     }
+
+    // MARK: MCP
+
+    @MainActor
+    func testMCPHandshakeToolsAndPlay() throws {
+        var p = Progress()
+        p.gold = 10_000
+        var rng = SplitMix64(seed: 2)
+        for _ in 0..<6 { p.bag.append(Engine.makeItem(region: 0, boss: true, rng: &rng)) }
+        let store = GameStore(progress: p, persist: false)
+        let mcp = MCPHandler(store: store)
+
+        let initR = mcp.handle(["jsonrpc": "2.0", "id": 1, "method": "initialize",
+                                "params": ["protocolVersion": "2025-06-18", "capabilities": [:]]])
+        let info = (initR?["result"] as? [String: Any])?["serverInfo"] as? [String: Any]
+        XCTAssertEqual(info?["name"] as? String, "desk-expedition")
+        XCTAssertNil(mcp.handle(["jsonrpc": "2.0", "method": "notifications/initialized"]))
+
+        let list = (mcp.handle(["jsonrpc": "2.0", "id": 2, "method": "tools/list"])?["result"] as? [String: Any])?["tools"] as? [[String: Any]]
+        let names = Set(list?.compactMap { $0["name"] as? String } ?? [])
+        XCTAssertTrue(names.isSuperset(of: ["get_status", "level_up", "auto_equip", "sell_all", "move_desk"]))
+        for t in list ?? [] { XCTAssertTrue(JSONSerialization.isValidJSONObject(t)) }
+
+        func call(_ name: String, _ args: [String: Any]) -> (Bool, String) {
+            let r = mcp.handle(["jsonrpc": "2.0", "id": 9, "method": "tools/call", "params": ["name": name, "arguments": args]])
+            let res = r?["result"] as? [String: Any]
+            let text = ((res?["content"] as? [[String: Any]])?.first?["text"] as? String) ?? ""
+            return (res?["isError"] as? Bool ?? true, text)
+        }
+        let (statusErr, statusText) = call("get_status", [:])
+        XCTAssertFalse(statusErr)
+        XCTAssertTrue(statusText.contains("\"gold\""))
+
+        XCTAssertFalse(call("level_up", ["hero": 2, "times": 3, "reason": "마법사 화력"]).0)
+        XCTAssertEqual(store.progress.heroes[2].level, 4)
+        XCTAssertTrue(store.banner?.contains("🤖") ?? false)
+        XCTAssertEqual(store.aiLog.count, 1)
+
+        XCTAssertFalse(call("auto_equip", [:]).0)
+        XCTAssertTrue(call("select_region", ["region": 3]).0, "locked region must be refused")
+        XCTAssertTrue(call("move_desk", ["confirm": true]).0, "cannot move before depths unlock")
+        XCTAssertTrue(call("nope", [:]).0)
+
+        let unknown = mcp.handle(["jsonrpc": "2.0", "id": 5, "method": "bogus"])
+        XCTAssertEqual((unknown?["error"] as? [String: Any])?["code"] as? Int, -32601)
+        let prompt = mcp.handle(["jsonrpc": "2.0", "id": 6, "method": "prompts/get", "params": ["name": "play"]])
+        XCTAssertNotNil((prompt?["result"] as? [String: Any])?["messages"])
+    }
+
+    func testHTTPRequestParsing() {
+        let raw = "POST /mcp HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Bearer abc\r\nContent-Length: 2\r\n\r\n{}"
+        let r = HTTPRequest(Data(raw.utf8))
+        XCTAssertEqual(r?.method, "POST")
+        XCTAssertEqual(r?.headers["authorization"], "Bearer abc")
+        XCTAssertEqual(r?.body, Data("{}".utf8))
+        XCTAssertNil(HTTPRequest(Data("POST /mcp HTTP/1.1\r\nContent-Length: 10\r\n\r\n{}".utf8)), "waits for full body")
+    }
 }

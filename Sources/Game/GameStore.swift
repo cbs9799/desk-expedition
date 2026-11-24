@@ -39,6 +39,38 @@ final class GameStore {
     @ObservationIgnored private(set) var dexDiscoveries = 0
     @ObservationIgnored private(set) var lastDexName = ""
     @ObservationIgnored private(set) var movesSeen = 0
+
+    // MARK: AI (MCP) bookkeeping
+    struct LogLine: Identifiable { let id = UUID(); let date: Date; let text: String }
+    /// Notable game events the AI can read back ("what happened while you were away").
+    @ObservationIgnored private(set) var events: [LogLine] = []
+    /// What the connected AI did, shown in the menu.
+    private(set) var aiLog: [LogLine] = []
+    private(set) var lastAIContact: Date?
+    /// Bumped on every AI action so the strip can show a 🤖 callout.
+    @ObservationIgnored private(set) var aiActions = 0
+    @ObservationIgnored private(set) var lastAIText = ""
+
+    func noteAIContact() {
+        if lastAIContact.map({ Date().timeIntervalSince($0) > 5 }) ?? true { lastAIContact = Date() }
+    }
+
+    var aiConnected: Bool { lastAIContact.map { Date().timeIntervalSince($0) < 15 * 60 } ?? false }
+
+    /// Records an AI action and surfaces it on the strip with the AI's reason.
+    func aiAct(_ what: String, reason: String?) {
+        let text = reason.map { $0.isEmpty ? what : "\(what) — \($0)" } ?? what
+        aiLog.append(LogLine(date: Date(), text: text))
+        if aiLog.count > 50 { aiLog.removeFirst(aiLog.count - 50) }
+        aiActions += 1
+        lastAIText = text
+        showBanner("🤖 \(text)", seconds: 6)
+    }
+
+    private func logEvent(_ text: String) {
+        events.append(LogLine(date: Date(), text: text))
+        if events.count > 60 { events.removeFirst(events.count - 60) }
+    }
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var bannerExpiry = Date.distantPast
     @ObservationIgnored private var lastSave = Date()
@@ -74,6 +106,7 @@ final class GameStore {
         progress = p
         battle = Engine.newBattle(for: p)
         lastOffline = report
+        logEvent("자리 비움 정산: \(report.durationText), \(report.kills)마리, 골드 +\(report.gold)")
         var extra = ""
         if report.newDex > 0 { extra += " · 새 도감 \(report.newDex)" }
         if report.pages > 0 { extra += " · 일지 \(report.pages)장" }
@@ -105,6 +138,12 @@ final class GameStore {
     }
 
     private func handle(_ report: TickReport) {
+        for b in report.bossesDefeated { logEvent("보스 처치: \(b)") }
+        if let r = report.regionUnlocked { logEvent("새 지역 해금: \(Region.all[r].name)") }
+        for d in report.drops where d.rarity >= .rare { logEvent("\(d.rarity.name) 전리품: \(d.name)") }
+        for n in report.newDex { logEvent("도감 등록: \(n)") }
+        if report.wipes > 0 { logEvent("전멸 → 3웨이브 후퇴 (\(progress.stageText))") }
+        if report.bagBecameFull { logEvent("가방이 가득 참") }
         if let name = report.newDex.last {
             dexDiscoveries += report.newDex.count
             lastDexName = name

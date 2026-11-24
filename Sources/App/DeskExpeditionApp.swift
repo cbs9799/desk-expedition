@@ -1,7 +1,16 @@
 import AppKit
 import SwiftUI
 
+/// `--mcp` turns the executable into a headless stdio MCP bridge for AI clients; otherwise run the app.
 @main
+enum Entry {
+    static func main() {
+        if CommandLine.arguments.contains("--mcp") { MCPBridge.run() }
+        DeskExpeditionApp.main()
+    }
+}
+
+
 struct DeskExpeditionApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
@@ -20,6 +29,7 @@ struct DeskExpeditionApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var strip: StripWindowController?
     private var hq: HQWindowController?
+    private var mcp: MCPServer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let args = ProcessInfo.processInfo.arguments
@@ -41,6 +51,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let store = GameStore.shared
         store.start()
+        mcp = MCPServer(store: store)
+        mcp?.start()
         strip = StripWindowController(store: store, onOpenHQ: { [weak self] in self?.openHQ() })
         hq = HQWindowController(store: store)
         if args.contains("--open-hq") || store.lastOffline != nil { openHQ() }

@@ -7,8 +7,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.2.4"
-    CURRENT_PROJECT_VERSION: "6"
+    MARKETING_VERSION: "0.2.5"
+    CURRENT_PROJECT_VERSION: "7"
 targets:
   DeskExpedition:
     type: application
@@ -16,6 +16,8 @@ targets:
     sources:
       - Sources
       - path: Resources/Art
+        buildPhase: resources
+      - path: Resources/AI
         buildPhase: resources
     info:
       path: Sources/Info.plist
@@ -31,6 +33,8 @@ targets:
       path: Sources/DeskExpedition.entitlements
       properties:
         com.apple.security.app-sandbox: true
+        com.apple.security.network.server: true
+        com.apple.security.network.client: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: club.lemongrove.deskexpedition
