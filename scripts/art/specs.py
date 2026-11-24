@@ -147,3 +147,62 @@ def all_specs():
     specs["props_drawer"] = "Image: " + PROPS.format(scene=DRAWER_SCENE)
     specs["trophies"] = "Image: " + TROPHIES
     return specs
+
+
+# --- v0.2.4: thin ground lines (LemonDesk-style: objects stand on a strip, the desktop shows above) ---
+GROUND_LINE = (
+    "A single long, thin, horizontal 2D pixel-art GROUND STRIP for a side-scrolling game, seen from the side, "
+    "late-1990s 32-bit console style (crisp chunky pixels, 1px dark outline on top edge, saturated colors, "
+    "NO anti-aliasing). The strip runs edge to edge across the full image width as one continuous band about "
+    "8% of the image height, centered vertically; solid flat pure magenta (#FF00FF) everywhere above and below it. "
+    "The top edge of the strip is decorated with tiny details sticking up (no more than a few pixels tall). "
+    "It must tile seamlessly left-to-right. No text, no characters, no large objects. Material: {material}."
+)
+
+STRIP_MATERIALS = {
+    "notebook": "white lined notebook paper edge with blue lines, tiny pink eraser crumbs and pencil dots on top",
+    "pencilcup": "warm wooden desk plank with wood grain, tiny curly pencil shavings and graphite dust on top",
+    "mug": "dark wooden desk with spilled coffee drips, tiny sugar grains and coffee drops on top",
+    "planter": "brown soil with small grass tufts, tiny fallen leaves and pebbles on top",
+    "monitor": "dark navy desk surface with a thin glowing blue cable line, tiny dust specks and crumbs on top",
+    "drawer": "old wooden drawer floor with tiny coins, paper clip bits and rubber band pieces on top",
+}
+
+_v022_all_specs = all_specs
+
+
+def all_specs():
+    specs = _v022_all_specs()
+    for scene, material in STRIP_MATERIALS.items():
+        specs[f"strip_{scene}"] = "Image: " + GROUND_LINE.format(material=material)
+    return specs
+
+
+LANDMARKS = {
+    "notebook": "tall cute 'trees' and landmarks made of stationery: a pencil standing upright with a leafy sticky-note crown, "
+                "a paper-airplane on a stick, a stack of erasers like a tower, a folded paper tree, a ruler signpost, a tiny paper house",
+    "pencilcup": "tall pencils standing like trees with shaving-leaf tops, a pencil cup tower, a sharpener hut, a crayon lamp post, "
+                 "a stack of colored pencils, a wooden ruler fence",
+    "mug": "a steaming teacup house, sugar-cube towers, a cinnamon-stick tree, a tea bag hanging from a spoon post, "
+           "a cookie wheel, a coffee bean bush",
+    "planter": "round leafy potted trees with tiny flowers, a tall succulent, a fern, a small cactus, a flowering shrub, a mushroom",
+    "monitor": "a glowing desk lamp, a cable tree with LED leaves, a USB-stick tower, a keycap house, a headphone arch, a mini plant",
+    "drawer": "a stack of coins like a tower, a spool of thread tree, a rubber-band bush, a key standing upright, "
+              "a matchbox house, a candle stub lamp",
+}
+
+LANDMARK_PROMPT = (
+    "A row of 6 separate 2D pixel-art background objects for a cute side-scrolling desktop idle game, late-1990s 32-bit "
+    "console style (crisp chunky pixels, 1px dark outline, saturated colors, NO anti-aliasing). Solid flat pure magenta "
+    "(#FF00FF) background, evenly spaced in one row, not touching, each standing on an invisible ground line, "
+    "similar heights (tall, like small trees), no shadows, no text. Objects: {what}."
+)
+
+_v024_all_specs = all_specs
+
+
+def all_specs():
+    specs = _v024_all_specs()
+    for scene, what in LANDMARKS.items():
+        specs[f"props2_{scene}"] = "Image: " + LANDMARK_PROMPT.format(what=what)
+    return specs

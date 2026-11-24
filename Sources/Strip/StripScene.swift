@@ -8,7 +8,7 @@ import SpriteKit
 @MainActor
 final class StripScene: SKScene {
     static let viewport = CGRect(x: 0, y: 0, width: StripLayout.battleWidth, height: StripLayout.height)
-    static let groundY: CGFloat = 12
+    static var groundY: CGFloat = 13
     /// Prop frames that don't read well standing on the ground.
     static let skipProps: [String: Set<Int>] = ["drawer": [5]]
     /// Where gold glints fly to (HUD gold counter, scene coordinates).
@@ -127,7 +127,7 @@ final class StripScene: SKScene {
 
     /// Parallax speeds (× ground speed).
     enum Depth {
-        static let far: CGFloat = 0.25, mid: CGFloat = 0.55, groundBack: CGFloat = 0.8
+        static let far: CGFloat = 0.35, mid: CGFloat = 0.55, groundBack: CGFloat = 0.8
         static let ground: CGFloat = 1, fore: CGFloat = 1.45
     }
 
@@ -137,49 +137,47 @@ final class StripScene: SKScene {
         for l in lanes { l.items.forEach { $0.node.removeFromParent() } }
         bands = []; lanes = []
 
-        let ground = Backdrop.texture("bg_\(region.scene)_ground")
-        let far = Backdrop.texture("bg_\(region.scene)_far")
-        var groundH: CGFloat = 30
-        if let g = ground {
-            // The walkable floor is split in two so its back edge slides slower than the strip under the feet.
-            let backFrac: CGFloat = 0.4
-            let back = SKTexture(rect: CGRect(x: 0, y: 1 - backFrac, width: 1, height: backFrac), in: g)
-            let front = SKTexture(rect: CGRect(x: 0, y: 0, width: 1, height: 1 - backFrac), in: g)
-            back.filteringMode = .nearest; front.filteringMode = .nearest
-            let frontH = front.size().height * Backdrop.nodeScale
-            groundH = g.size().height * Backdrop.nodeScale
-            bands.append(ParallaxBand(texture: front, y: 0, speed: Depth.ground, layer: groundLayer, scene: self))
-            bands.append(ParallaxBand(texture: back, y: frontH - 0.5, speed: Depth.groundBack, layer: groundBackLayer, scene: self))
+        // LemonDesk-style: a thin pixel ground line at the bottom; everything stands on it and
+        // the desktop itself is the sky.
+        if let strip = Backdrop.texture("strip_\(region.scene)") {
+            bands.append(ParallaxBand(texture: strip, y: 0, speed: Depth.ground, layer: groundLayer, scene: self))
+            groundTop = strip.size().height * Backdrop.nodeScale - 5
+        } else {
+            groundTop = 12
         }
-        groundTop = groundH - 1
-        if let f = far {
-            bands.append(ParallaxBand(texture: f, y: groundTop - 1, speed: Depth.far, layer: farLayer, scene: self,
-                                      tint: (NSColor(hex: 0x1A1030), 0.22)))
-        }
+        Self.groundY = groundTop - 1
 
         let props = SpriteSheet.named("props_\(region.scene)")
         let usable = (0..<(props?.frames.count ?? 0)).filter { !(Self.skipProps[region.scene] ?? []).contains($0) }
+        // Tall landmark objects (the "trees" of each desk region); falls back to regular props.
+        let landmarks = SpriteSheet.named("props2_\(region.scene)") ?? props
+        func landmark() -> (SpriteSheet, Int)? {
+            guard let sheet = landmarks else { return nil }
+            return (sheet, Int.random(in: 0..<sheet.frames.count))
+        }
+        // No painted backdrop: the desktop shows above the floor; depth comes from objects alone.
+        // Far: big landmark objects on the back edge, slow and slightly faded.
+        lanes.append(PropLane(layer: farLayer, speed: Depth.far, spacing: 48...110, y: groundTop + 1) { [weak self] in
+            guard let (sheet, f) = landmark() else { return nil }
+            let n = SKSpriteNode(texture: sheet.frames[f])
+            n.anchorPoint = sheet.anchor
+            n.setScale(PixelArt.scale * CGFloat.random(in: 0.75...0.95))
+            self?.scenery(n, tint: (NSColor(hex: 0xBFC6E6), 0.3))
+            return n
+        })
         // Mid: small hazy props on the horizon.
-        lanes.append(PropLane(layer: midLayer, speed: Depth.mid, spacing: 70...170, y: groundTop - 1) { [weak self] in
-            guard let props, let f = usable.randomElement() else { return nil }
-            let n = SKSpriteNode(texture: props.frames[f])
-            n.anchorPoint = props.anchor
-            n.setScale(PixelArt.scale * CGFloat.random(in: 0.38...0.5))
-            self?.scenery(n, tint: (NSColor(hex: 0x9AA6D0), 0.45))
+        lanes.append(PropLane(layer: midLayer, speed: Depth.mid, spacing: 110...240, y: groundTop) { [weak self] in
+            let pick: (SpriteSheet, Int)? = Bool.random() ? landmark() : props.flatMap { p in usable.randomElement().map { (p, $0) } }
+            guard let (sheet, f) = pick else { return nil }
+            let n = SKSpriteNode(texture: sheet.frames[f])
+            n.anchorPoint = sheet.anchor
+            n.setScale(PixelArt.scale * CGFloat.random(in: 0.6...0.75))
+            self?.scenery(n, tint: (NSColor(hex: 0xBFC6E6), 0.12))
             return n
         })
         // Near: props and trophies on the back edge of the floor, behind the party.
-        lanes.append(PropLane(layer: propLayer, speed: Depth.ground, spacing: 170...340, y: groundTop - 4) { [weak self] in
+        lanes.append(PropLane(layer: propLayer, speed: Depth.ground, spacing: 150...320, y: groundTop - 1) { [weak self] in
             self?.makeNearProp(props: props, usable: usable)
-        })
-        // Fore: big dark silhouettes sliding past in front of everyone, mostly below the frame.
-        lanes.append(PropLane(layer: foreLayer, speed: Depth.fore, spacing: 380...760, y: -34) { [weak self] in
-            guard let props, let f = usable.randomElement() else { return nil }
-            let n = SKSpriteNode(texture: props.frames[f])
-            n.anchorPoint = props.anchor
-            n.setScale(PixelArt.scale * CGFloat.random(in: 1.3...1.6))
-            self?.scenery(n, tint: (NSColor(hex: 0x120A1C), 0.7), alpha: 0.9)
-            return n
         })
         for l in lanes { l.nextX = scroll * l.speed + CGFloat.random(in: 40...200) }
         applyThemeTint()
@@ -969,8 +967,8 @@ enum SceneryShader {
         void main() {
             vec4 c = texture2D(u_texture, (floor(v_tex_coord * a_tex) + 0.5) / a_tex);
             vec2 p = vec2(v_tex_coord.x * a_map.x + a_map.y, v_tex_coord.y * a_map.z + a_map.w);
-            float side = smoothstep(0.0, 46.0, p.x) * (1.0 - smoothstep(\(Int(fadeRight) - 90).0, \(Int(fadeRight)).0, p.x));
-            float top = 1.0 - smoothstep(70.0, 100.0, p.y);
+            float side = smoothstep(0.0, 24.0, p.x) * (1.0 - smoothstep(\(Int(fadeRight) - 90).0, \(Int(fadeRight)).0, p.x));
+            float top = 1.0;
             float bottom = smoothstep(-6.0, 6.0, p.y);
             vec3 rgb = mix(c.rgb, a_tint.rgb * c.a, a_tint.a) * a_mul;
             gl_FragColor = vec4(rgb, c.a) * (side * top * bottom) * v_color_mix.a;

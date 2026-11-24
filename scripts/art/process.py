@@ -30,7 +30,7 @@ def layout(key):
         flyer = name in {"paper_crane", "clip_bat", "teabag_ghost", "dandelion_sprite", "cursor_ghost"}
         h = 50 if boss else 32 if heavy else 20 if flyer else 20
         return 3, 4, h, MON_ANIMS
-    if key.startswith("props_") or key in ("accessories", "trophies"):
+    if key.startswith("props") or key in ("accessories", "trophies"):
         return 1, 6, None, None
     return None
 
@@ -150,13 +150,13 @@ def process_sheet(key):
         f = target_h / float(np.median(ref))
     else:  # props/accessories: scale relative to the tallest item
         tallest = max(b[3] - b[1] for b in boxes if b)
-        f = (44 if key.startswith("props_") else 18 if key == "trophies" else 12) / tallest
+        f = (58 if key.startswith("props2_") else 44 if key.startswith("props_") else 18 if key == "trophies" else 12) / tallest
     frames = [shrink(img, b, f) if b else np.zeros((1, 1, 4), np.uint8) for b in boxes]
     frames = quantize(frames)
     team = TEAM.get(key)
     if key.startswith("hero_"):
         frames = [add_outline(fr, team) for fr in frames]
-    elif key.startswith("mon_") or key.startswith("props_") or key == "trophies":
+    elif key.startswith("mon_") or key.startswith("props") or key == "trophies":
         frames = [add_outline(fr, OUTLINE_DARK) for fr in frames]
 
     # common cell: every frame bottom-aligned, anchor column aligned
@@ -244,11 +244,37 @@ def process_backdrop(key):
     return f"{key}: {out}"
 
 
+def process_strip(key, height=12):
+    """Thin ground line on magenta → transparent, `height` art px tall, seamless loop (quilted incl. alpha)."""
+    img, fg = load_rgba(RAW / f"{key}.png")
+    rows = np.nonzero(fg.mean(1) > 0.5)[0]           # rows that are mostly ground
+    y0, y1 = rows.min(), rows.max() + 1
+    deco = np.nonzero(fg[:y0].mean(1) > 0.01)[0]     # little details sticking up above the band
+    if len(deco):
+        y0 = max(deco.min(), y0 - (y1 - y0))
+    band = img[y0:y1, 8:-8]
+    H, W = band.shape[:2]
+    f = height / H
+    small = Image.fromarray(band).convert("RGBa").resize((round(W * f), height), Image.BOX).convert("RGBA")
+    a = np.asarray(small).copy()
+    a[..., 3] = np.where(a[..., 3] >= 110, 255, 0)
+    rgb = Image.fromarray(a[..., :3]).quantize(32, method=Image.MEDIANCUT, dither=Image.NONE).convert("RGB")
+    a = np.dstack([np.asarray(rgb), a[..., 3]]).astype(np.float32)
+    weighted = a.copy(); weighted[..., :3] *= (a[..., 3:] / 255)
+    tile, cost = make_loop(weighted)
+    # re-take true colours for the chosen window (make_loop worked on weighted copies)
+    out = tile.copy()
+    out[..., :3] = np.where(out[..., 3:] > 0, out[..., :3] / np.maximum(out[..., 3:] / 255, 1e-3), 0)
+    Image.fromarray(out.clip(0, 255).astype(np.uint8), "RGBA").save(OUT / f"{key}.png")
+    return f"{key}: {tile.shape[1]}x{tile.shape[0]}, seam {round(cost)}"
+
+
 def main():
     keys = sys.argv[1:] or sorted(p.stem for p in RAW.glob("*.png"))
     for k in keys:
         try:
-            print(process_backdrop(k) if k.startswith("bg_") else process_sheet(k))
+            print(process_backdrop(k) if k.startswith("bg_") else process_strip(k) if k.startswith("strip_")
+                  else process_sheet(k))
         except Exception as e:  # keep going; report at the end
             print(f"ERROR {k}: {e}")
 
