@@ -1,0 +1,40 @@
+name: CI
+
+# 릴리스는 집서버에서 scripts/release.sh로 올린다(Developer ID 서명·공증이 그 맥에만 있음).
+# 여기서는 테스트만 돌리고, 수동 실행 시 ad-hoc 빌드를 아티팩트로 남긴다.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: 최신 Xcode 선택
+        run: |
+          XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: XcodeGen 설치
+        run: brew install xcodegen
+
+      - name: 테스트
+        run: |
+          xcodegen generate
+          xcodebuild -project DeskExpedition.xcodeproj -scheme DeskExpedition \
+            -derivedDataPath build/test test | tail -5
+
+      - name: ad-hoc 빌드 (수동 실행 때만)
+        if: github.event_name == 'workflow_dispatch'
+        run: NOTARIZE=0 scripts/package.sh
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: DeskExpedition-adhoc
+          path: dist/*

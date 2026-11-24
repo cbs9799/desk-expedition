@@ -21,7 +21,7 @@
   - 확인 도구: `--frames <dir>`로 띠를 0.1초 간격 PNG로 오프스크린 렌더링.
 - **장기 목표 (0.2.2)**: 책상 도감 60칸(몬스터 20종 × 일반/반짝이 1/400/왕관 1/50, 보스는 일반·반짝이, 희귀 손님 5종), 칸마다 골드 +1%. 원정 일지 33장(영웅 이름이 들어간 짧은 일기). 서랍 심층(6번째 지역, 끝없는 층, 10층마다 보스의 메아리). 트로피 6종이 띠 풍경에 섞여 지나감. 이름 있는 전설 장비 20종(전설의 35%), 전설 무기 장착 시 손에 금빛. 이사(환생): 추억 조각 1개당 공격·골드 +5%, 책상 테마 4종(풍경 색조), 도감·일지·트로피·이름은 유지. 본부에 원정대/도감/일지/기록 탭.
 - **배경 이음매**: 배경 띠를 반복할 때 양 끝을 가장 덜 달라지는 경로로 잇도록(이미지 퀼팅) 바꾸고, 공책·연필꽂이·서랍 배경은 가장자리에 큰 물체가 없도록 다시 생성.
-- **공증 배포 준비**: `scripts/package.sh`가 `DEVELOPER_ID`와 공증 자격 증명(`NOTARY_PROFILE` 또는 API 키)이 있으면 서명→공증→스테이플링. GitHub Actions는 시크릿(MACOS_CERT_P12, MACOS_CERT_PASSWORD, DEVELOPER_ID, NOTARY_KEY_P8, NOTARY_KEY_ID, NOTARY_ISSUER)이 있으면 같은 경로로 감.
+- **공증 배포**: 릴리스는 집서버(이 Mac Studio)에서 `scripts/release.sh`로 올림. 테스트 → Developer ID 서명(서명용 키체인 `signing.keychain-db`) → 앱·dmg 공증(`weekwrap-notary` 프로필) → 스테이플 → 태그·GitHub 릴리스 업로드 → 내려받아 Gatekeeper 검증. GitHub Actions는 이제 테스트만(CI).
 - **테스트** 11개(기존 6개 + 도감·변종, 희귀 손님 스폰, 심층 층 기록, 이사, 예전 세이브 호환)(전투 진행, 보스 처치·지역 해금, 오프라인 상한·속도, 가방 가득 참, 등급 스케일, 장착·일괄 판매): 모두 통과.
 - **docs/screenshot.png**: 앱의 `--snapshot` 모드로 실제 SwiftUI 화면(띠·메뉴·본부)을 정해진 게임 상태로 렌더링한 합성 이미지.
 
@@ -39,10 +39,9 @@ build/Build/Products/Debug/DeskExpedition.app/Contents/MacOS/DeskExpedition --sn
 - iOS가 아니라 macOS 앱이라 시뮬레이터 대신 macOS 빌드로 확인했습니다.
 
 ## 다운로드 / 배포
-- 받는 곳: GitHub 저장소의 **Releases** 페이지 → `DeskExpedition-<버전>.dmg`(또는 `.zip`). 설치 안내는 `.github/release-notes.md`.
-- 로컬에서 배포 파일 만들기: `scripts/package.sh [버전]` → `dist/`에 유니버설(arm64+x86_64) `.dmg`, `.zip`, `SHA256SUMS.txt`.
-- 자동 릴리스: `git tag v0.1.0 && git push origin v0.1.0` 하면 `.github/workflows/release.yml`이 테스트 → 패키징 → Releases 업로드.
-- 아직 ad-hoc 서명이라 받은 사람은 첫 실행 때 "그래도 열기"를 눌러야 합니다. Developer ID 서명과 공증을 붙이면 경고가 사라집니다.
+- 받는 곳: GitHub 저장소 **Releases** → `DeskExpedition-<버전>.dmg`. 0.2.2부터 Developer ID 서명 + Apple 공증이라 경고 없이 열림.
+- 새 버전 올리기(집서버에서): `project.yml`의 `MARKETING_VERSION` 세 번째 자리만 올리고 커밋 → `scripts/release.sh`.
+- 로컬에서 파일만 만들기: `scripts/package.sh [버전]` (서명용 키체인이 없거나 `NOTARIZE=0`이면 ad-hoc).
 
 ## 남은 일
 - **아트 다듬기**: AI 생성 시트라 프레임 사이 미세한 흔들림이 있음. 마음에 안 드는 시트는 `gen.py <키>`로 다시 뽑기. 스킬 전용 프레임(지금은 공격 프레임 재사용)과 달리기 전용 프레임 추가 후보.
@@ -54,7 +53,7 @@ build/Build/Products/Debug/DeskExpedition.app/Contents/MacOS/DeskExpedition --sn
 - **품질**: 장시간 실행 CPU·메모리 측정(Instruments), 멀티 모니터와 Dock 위치(왼쪽/오른쪽/자동 숨김) 대응 검증.
 
 ## 출시 전에 사람이 해야 할 것
-- Apple Developer 팀 서명 설정(지금은 ad-hoc `-` 서명), App Store Connect 앱 등록, 유료 앱 가격($4.99 / ₩6,600) 설정.
+- App Store Connect 앱 등록(Developer ID 직접 배포는 0.2.2부터 됨), 유료 앱 가격($4.99 / ₩6,600) 설정.
 - 최종 이름과 상표 확인(“책상 원정대” 가칭), 레몬 데스크와 시리즈로 묶을지 결정.
 - 상업 라이선스 에셋 구매와 교체, 앱 아이콘 제작(지금은 없음).
 - 앱 심사용 스크린샷·설명·개인정보 처리 방침(수집 없음) 작성, 연령 등급 12+ 설문.
