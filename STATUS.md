@@ -29,6 +29,12 @@ build/Build/Products/Debug/DeskExpedition.app/Contents/MacOS/DeskExpedition --sn
 - 진행 초기화: `~/Library/Containers/club.lemongrove.deskexpedition/Data/Library/Application Support/DeskExpedition/save.json` 삭제.
 - iOS가 아니라 macOS 앱이라 시뮬레이터 대신 macOS 빌드로 확인했습니다.
 
+## 다운로드 / 배포
+- 받는 곳: GitHub 저장소의 **Releases** 페이지 → `DeskExpedition-<버전>.dmg`(또는 `.zip`). 설치 안내는 `.github/release-notes.md`.
+- 로컬에서 배포 파일 만들기: `scripts/package.sh [버전]` → `dist/`에 유니버설(arm64+x86_64) `.dmg`, `.zip`, `SHA256SUMS.txt`.
+- 자동 릴리스: `git tag v0.1.0 && git push origin v0.1.0` 하면 `.github/workflows/release.yml`이 테스트 → 패키징 → Releases 업로드.
+- 아직 ad-hoc 서명이라 받은 사람은 첫 실행 때 "그래도 열기"를 눌러야 합니다. Developer ID 서명과 공증을 붙이면 경고가 사라집니다.
+
 ## 남은 일
 - **아트**: 지금은 코드로 그린 임시 픽셀 스프라이트입니다. 상업 라이선스 픽셀 에셋(영웅 3종 애니메이션, 지역 배경, 몬스터 15종, 보스 5종)으로 바꿔야 합니다.
 - **밸런스**: 레벨·골드·지역 배율을 실제 플레이로 조정해야 합니다(현재: 지역마다 적 체력 ×2.6, 레벨마다 스탯 ×1.1, 레벨업 비용 ×1.17).
