@@ -264,3 +264,24 @@ def all_specs():
     specs["pets"] = PETS
     specs["camp"] = CARAVAN
     return specs
+
+
+# --- v0.2.15: UI icons replacing emoji in HQ ---------------------------------------------------
+UI_ICONS = (
+    "Image: A 2D pixel-art UI ICON sheet for a cute desk-miniature RPG, late-1990s 32-bit console style (crisp chunky "
+    "pixels, 1px dark outline, 3-4 tone shading, saturated colors, NO anti-aliasing, NO blur). Solid flat pure magenta "
+    "(#FF00FF) background, 2 rows of 8 icons, evenly spaced in a grid, each icon centered, same visual size, bold and "
+    "readable at 16 pixels, no text, no frames. Row 1: a shiny gold coin with a star, a small desk calendar page with a "
+    "red top, a small brass padlock, a tiny cute desk robot head with antenna, a yellow star, a green checkmark, a blue "
+    "jigsaw puzzle piece, a pink paw print. Row 2: a gold medal with a red ribbon, a balance scale, two crossed swords, "
+    "a round blue shield, a brown money bag with a coin sign, a sleeping crescent moon with small z, an orange flame, "
+    "a bold green up arrow."
+)
+
+_v027_all_specs = all_specs
+
+
+def all_specs():
+    specs = _v027_all_specs()
+    specs["icons"] = UI_ICONS
+    return specs

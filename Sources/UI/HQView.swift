@@ -59,20 +59,24 @@ struct HQView: View {
 
     private func header(_ p: Progress) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .center, spacing: 10) {
                 Text("원정 본부").font(.system(size: 22, weight: .heavy, design: .rounded))
                 Text(p.isBossWave ? "\(p.region.name) · \(p.isEndless ? "\(p.wave)층 " : "")보스전" : "\(p.region.name) · \(p.stageText)")
-                Text("\(p.tactic.icon) \(p.tactic.name) · 📅 \(WeeklyRule.current().name)")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
                     .font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
+                HStack(spacing: 8) {
+                    IconText(icon: p.tactic.gameIcon, text: p.tactic.name, size: 13)
+                    IconText(icon: .calendar, text: WeeklyRule.current().name, size: 13)
+                }
+                .font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
                 Spacer()
-                Label("\(p.totalKills.formatted())", systemImage: "flame.fill")
+                IconText(icon: .flame, text: p.totalKills.formatted(), size: 15)
                     .font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(Theme.dim)
-                Text("🪙 \(p.gold.formatted())")
+                IconText(icon: .coin, text: p.gold.formatted(), size: 20, spacing: 6)
                     .font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(Theme.gold)
             }
             SegmentRow(options: Array(Region.all.indices), selected: p.regionIndex,
-                       label: { i in i <= p.unlockedRegion ? (Region.all[i].endless ? "∞ \(L10n.t(Region.all[i].name))" : "\(i + 1). \(L10n.t(Region.all[i].name))") : "🔒 \(Region.all[i].endless ? "∞" : "\(i + 1)")" },
+                       label: { i in i <= p.unlockedRegion ? (Region.all[i].endless ? "∞ \(L10n.t(Region.all[i].name))" : "\(i + 1). \(L10n.t(Region.all[i].name))") : (Region.all[i].endless ? "∞" : "\(i + 1)") },
+                       icon: { $0 <= p.unlockedRegion ? nil : .lock },
                        enabled: { $0 <= p.unlockedRegion },
                        onSelect: { store.selectRegion($0) })
         }
@@ -81,7 +85,7 @@ struct HQView: View {
     /// "밤사이 대장이 한 일": what the connected AI did since HQ was last opened.
     private func captainBanner(_ entries: [DiaryEntry]) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Text("🤖").font(.system(size: 16))
+            PixelIcon(.robot, size: 20)
             VStack(alignment: .leading, spacing: 2) {
                 Text("AI 원정대장이 한 일 \(entries.count)개").font(.system(size: 12, weight: .heavy, design: .rounded))
                 ForEach(entries.suffix(3)) { e in
@@ -97,7 +101,7 @@ struct HQView: View {
 
     private func offlineBanner(_ r: OfflineReport) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: "moon.zzz.fill").foregroundStyle(Theme.gold)
+            PixelIcon(.moon, size: 18)
             Text("자리를 비운 \(r.durationText) 동안: \(r.kills.formatted())마리 처치 · 골드 +\(r.gold.formatted()) · 전리품 \(r.items)개\(r.bosses > 0 ? " · 보스 \(r.bosses)회" : "")\(r.newDex > 0 ? " · 새 도감 \(r.newDex)" : "")\(r.pages > 0 ? " · 일지 \(r.pages)장" : "")\(r.autoSold > 0 ? " · 자동 판매 \(r.autoSold)개" : "")")
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
             Spacer()
@@ -226,7 +230,11 @@ private struct HeroCard: View {
             Button {
                 store.levelUp(index)
             } label: {
-                Text("레벨업  🪙 \(hero.levelUpCost.formatted())").frame(maxWidth: .infinity)
+                HStack(spacing: 6) {
+                    Text("레벨업")
+                    IconText(icon: .coin, text: hero.levelUpCost.formatted(), size: 14)
+                }
+                .frame(maxWidth: .infinity)
             }
             .buttonStyle(GameButtonStyle())
             .disabled(store.progress.gold < hero.levelUpCost)
@@ -270,9 +278,14 @@ private struct ItemDetail: View {
                     }
                     .buttonStyle(GameButtonStyle(color: Theme.panelHi, compact: true))
                 }
-                Button("판매  🪙 \(item.sellValue.formatted())") {
+                Button {
                     store.sell(item)
                     onDone()
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("판매")
+                        IconText(icon: .coin, text: item.sellValue.formatted(), size: 12)
+                    }
                 }
                 .buttonStyle(GameButtonStyle(color: Color(hex: 0x8A6D3B), compact: true))
             } else {
@@ -313,8 +326,12 @@ private struct TraitRow: View {
         VStack(alignment: .leading, spacing: 4) {
             if let tier = hero.pendingTraitTier {
                 let (a, b) = Traits.options(hero.heroClass, tier: tier)
-                Text("★ Lv.\(Traits.tiers[tier]) 특성을 골라 주세요").font(.system(size: 10, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Theme.gold)
+                HStack(spacing: 4) {
+                    PixelIcon(.star, size: 12)
+                    Text("Lv.\(Traits.tiers[tier]) 특성을 골라 주세요")
+                }
+                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.gold)
                 HStack(spacing: 4) {
                     ForEach([(0, a), (1, b)], id: \.0) { opt, t in
                         Button { store.chooseTrait(index, tier: tier, option: opt) } label: {

@@ -20,6 +20,8 @@ enum L10n {
     }
 
     static let en: [String: String] = [
+        "대장 일지": "Captain's log", "이번 주": "This week", "도감 조각": "Dex shards", "동행": "Companions",
+        "전리품 수레": "Loot cart", "보스 3회": "3 boss kills", "후원자": "Supporter", "개": "", "골드": "gold",
         "을 설치하고 다시 시작해요": " — installing and restarting", "새 버전": "New version",
         "팔 장비가 없어요 (업그레이드는 남겨요)": "Nothing to sell (upgrades are kept)",
         "일괄 판매 — 업그레이드 장비는 남겨요": "Bulk sell — upgrades are kept",

@@ -21,7 +21,7 @@ struct BulkSellMenu<Label: View>: View {
                 Section(L10n.t("일괄 판매 — 업그레이드 장비는 남겨요")) {
                     ForEach(tiers, id: \.0) { rarity, title in
                         let preview = store.sellPreview(upTo: rarity)
-                        Button("\(L10n.t(title)) · \(preview.count)개 · 🪙 \(preview.gold.formatted())") {
+                        Button("\(L10n.t(title)) · \(preview.count)\(L10n.t("개")) · \(preview.gold.formatted()) \(L10n.t("골드"))") {
                             if rarity < .rare {
                                 store.bulkSell(upTo: rarity)
                             } else if inPanel {
@@ -30,7 +30,7 @@ struct BulkSellMenu<Label: View>: View {
                                     store.bulkSell(upTo: rarity)
                                 } else {
                                     armed = (rarity, Date())
-                                    store.showBanner(L10n.t("희귀·전설도 팔려면 같은 항목을 한 번 더 누르세요") + " (\(preview.count)개 · 🪙 \(preview.gold.formatted()))", seconds: 6)
+                                    store.showBanner(L10n.t("희귀·전설도 팔려면 같은 항목을 한 번 더 누르세요") + " (\(preview.count)\(L10n.t("개")) · \(preview.gold.formatted()) \(L10n.t("골드")))", seconds: 6)
                                 }
                             } else {
                                 confirm = rarity
@@ -49,7 +49,7 @@ struct BulkSellMenu<Label: View>: View {
                 Button(L10n.t("취소"), role: .cancel) { confirm = nil }
             } message: {
                 let p = store.sellPreview(upTo: confirm ?? .rare)
-                Text("\(p.count)개 · 🪙 \(p.gold.formatted())")
+                Text("\(p.count)\(L10n.t("개")) · \(p.gold.formatted()) \(L10n.t("골드"))")
             }
         }
     }

@@ -130,7 +130,8 @@ enum Snapshot {
     /// `--hq W H <out.png>`: renders only the HQ window content at a given size (resizing check).
     static func renderHQ(width: CGFloat, height: CGFloat, to url: URL) {
         let store = demoStore()
-        let view = HQView().environment(store).environment(\.staticRendering, true).frame(width: width, height: height)
+        let tab = ProcessInfo.processInfo.environment["DE_HQTAB"].flatMap(Int.init)
+        let view = HQView(initialTab: tab).environment(store).environment(\.staticRendering, true).frame(width: width, height: height)
         let r = ImageRenderer(content: view)
         r.scale = 1
         guard let img = r.cgImage else { return }

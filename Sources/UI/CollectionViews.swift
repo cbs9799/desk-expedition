@@ -117,7 +117,7 @@ struct JournalView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     if !p.aiDiary.isEmpty {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("🤖 대장 일지").font(.system(size: 13, weight: .heavy, design: .rounded))
+                            IconText(icon: .robot, text: L10n.t("대장 일지"), size: 16).font(.system(size: 13, weight: .heavy, design: .rounded))
                             ForEach(p.aiDiary.suffix(8).reversed()) { e in
                                 HStack(alignment: .top) {
                                     Text(e.date.formatted(date: .omitted, time: .shortened))
@@ -172,15 +172,18 @@ struct RecordsView: View {
             HStack(alignment: .top, spacing: 12) {
                 let week = WeeklyRule.current()
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("📅 이번 주: \(week.name)").font(.system(size: 13, weight: .heavy, design: .rounded))
+                    IconText(icon: .calendar, text: L10n.t("이번 주") + ": \(week.name)", size: 16).font(.system(size: 13, weight: .heavy, design: .rounded))
                     Text(week.desc).font(.system(size: 11, design: .rounded)).foregroundStyle(Theme.dim)
                     let kills = p.weekKey == WeeklyRule.weekKey() ? p.weekKills : 0
-                    Text(p.weekClaimed ? "주간 목표 달성 ✓ (추억 조각 +1)" : "주간 목표: \(min(kills, WeeklyRule.goalKills))/\(WeeklyRule.goalKills)마리 → 추억 조각 +1")
-                        .font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(Theme.gold)
+                    HStack(spacing: 4) {
+                        if p.weekClaimed { PixelIcon(.check, size: 12) }
+                        Text(p.weekClaimed ? "주간 목표 달성 (추억 조각 +1)" : "주간 목표: \(min(kills, WeeklyRule.goalKills))/\(WeeklyRule.goalKills)마리 → 추억 조각 +1")
+                    }
+                    .font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(Theme.gold)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("🧩 도감 조각 \(p.shards)").font(.system(size: 13, weight: .heavy, design: .rounded))
+                    IconText(icon: .puzzle, text: L10n.t("도감 조각") + " \(p.shards)", size: 16).font(.system(size: 13, weight: .heavy, design: .rounded))
                     Text("이미 만난 반짝이(3)·왕관(1)·희귀 손님(2)을 또 만나면 쌓여요. 반짝이 천장 \(p.shinyPity)/\(Pity.shinySpawns) · 전설 천장 \(p.legendaryPity)/\(Pity.legendaryDrops)")
                         .font(.system(size: 10, design: .rounded)).foregroundStyle(Theme.dim)
                         .fixedSize(horizontal: false, vertical: true)
@@ -194,15 +197,11 @@ struct RecordsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("🐾 동행").font(.system(size: 13, weight: .heavy, design: .rounded))
+                    IconText(icon: .paw, text: L10n.t("동행"), size: 16).font(.system(size: 13, weight: .heavy, design: .rounded))
                     ForEach(Companion.allCases, id: \.self) { c in
-                        Text(c.unlocked(p) ? "✓ \(c.name)" : "· \(c.name) — \(c.unlockText)")
-                            .font(.system(size: 10, weight: .semibold, design: .rounded))
-                            .foregroundStyle(c.unlocked(p) ? Color(hex: 0x9CFF9C) : Theme.dim)
+                        unlockLine(c.unlocked(p), c.unlocked(p) ? c.name : "\(c.name) — \(c.unlockText)")
                     }
-                    Text(Camp.hasCart(p) ? "✓ 전리품 수레" : "· 전리품 수레 — 보스 3회")
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Camp.hasCart(p) ? Color(hex: 0x9CFF9C) : Theme.dim)
+                    unlockLine(Camp.hasCart(p), Camp.hasCart(p) ? L10n.t("전리품 수레") : L10n.t("전리품 수레") + " — " + L10n.t("보스 3회"))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -283,7 +282,9 @@ private struct ShopSection: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text("꾸미기 상점").font(.system(size: 14, weight: .heavy, design: .rounded))
-                if shop.owns(.supporter) { Text("🎖 후원자").font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(Theme.gold) }
+                if shop.owns(.supporter) {
+                    IconText(icon: .medal, text: L10n.t("후원자"), size: 14).font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(Theme.gold)
+                }
                 Spacer()
                 Text("게임 성능에 영향 없는 꾸미기만 팔아요").font(.system(size: 10, design: .rounded)).foregroundStyle(Theme.dim)
             }
@@ -324,4 +325,14 @@ private struct ShopSection: View {
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 14).fill(Theme.panel))
     }
+}
+
+/// "✓ unlocked" / "· locked — how to unlock" line with the pixel check icon.
+func unlockLine(_ done: Bool, _ text: String) -> some View {
+    HStack(spacing: 4) {
+        if done { PixelIcon(.check, size: 11) } else { Text("·") }
+        Text(text)
+    }
+    .font(.system(size: 10, weight: .semibold, design: .rounded))
+    .foregroundStyle(done ? Color(hex: 0x9CFF9C) : Theme.dim)
 }

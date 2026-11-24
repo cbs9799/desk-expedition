@@ -36,6 +36,8 @@ def layout(key):
         return 3, 4, 16, {"cat": range(0, 4), "hamster": range(4, 8), "bird": range(8, 12)}
     if key == "camp":
         return 1, 6, None, None
+    if key == "icons":
+        return 2, 8, None, None
     if key == "items_base":
         return 2, 6, None, None
     if key.startswith("items_unique"):
@@ -168,13 +170,13 @@ def process_sheet(key):
     else:  # props/accessories: scale relative to the tallest item
         tallest = max(b[3] - b[1] for b in boxes if b)
         f = (58 if key.startswith("props2_") else 44 if key.startswith("props_") else 18 if key == "trophies"
-             else 22 if key.startswith("items") else 30 if key == "camp" else 12) / tallest
+             else 22 if key.startswith("items") else 30 if key == "camp" else 16 if key == "icons" else 12) / tallest
     frames = [shrink(img, b, f) if b else np.zeros((1, 1, 4), np.uint8) for b in boxes]
     frames = quantize(frames)
     team = TEAM.get(key)
     if key.startswith("hero_"):
         frames = [add_outline(fr, team) for fr in frames]
-    elif key.startswith("mon_") or key.startswith("props") or key in ("trophies", "pets", "camp") or key.startswith("items"):
+    elif key.startswith("mon_") or key.startswith("props") or key in ("trophies", "pets", "camp", "icons") or key.startswith("items"):
         frames = [add_outline(fr, OUTLINE_DARK) for fr in frames]
 
     # common cell: every frame bottom-aligned, anchor column aligned

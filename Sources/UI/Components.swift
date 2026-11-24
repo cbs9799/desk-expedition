@@ -60,6 +60,7 @@ struct SegmentRow<T: Hashable>: View {
     let options: [T]
     let selected: T
     let label: (T) -> String
+    var icon: (T) -> GameIcon? = { _ in nil }
     var enabled: (T) -> Bool = { _ in true }
     let onSelect: (T) -> Void
 
@@ -67,7 +68,10 @@ struct SegmentRow<T: Hashable>: View {
         HStack(spacing: 4) {
             ForEach(options, id: \.self) { opt in
                 Button { onSelect(opt) } label: {
-                    Text(LocalizedStringKey(label(opt)))
+                    HStack(spacing: 4) {
+                        if let ic = icon(opt) { PixelIcon(ic, size: 12).opacity(enabled(opt) ? 1 : 0.6) }
+                        Text(LocalizedStringKey(label(opt)))
+                    }
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .lineLimit(1)
                         .frame(maxWidth: .infinity)
@@ -139,9 +143,7 @@ struct ItemCell: View {
                                center: .center, startRadius: 0, endRadius: size * 0.5)
                 ItemIcon(item: item, size: size * 0.78)
                 if upgrade {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Color(hex: 0x58D26B))
+                    PixelIcon(.upArrow, size: 12)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                         .padding(3)
                 }

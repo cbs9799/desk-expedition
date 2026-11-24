@@ -536,12 +536,12 @@
         }
       }
     },
-    "띠 오른쪽에 마우스를 올리면 바로 조작할 수 있어요: 지역 이름 ▾로 지역 이동, 웨이브 보석으로 웨이브 선택, 영웅 칩으로 레벨업, ⚖️로 전술. ★가 뜨면 특성을 고를 차례예요. 장비는 자동 정리가 알아서 해요.": {
+    "띠 오른쪽에 마우스를 올리면 바로 조작할 수 있어요: 지역 이름 ▾로 지역 이동, 웨이브 보석으로 웨이브 선택, 영웅 칩으로 레벨업, 저울 아이콘으로 전술. 별 표시가 뜨면 특성을 고를 차례예요. 장비는 자동 정리가 알아서 해요.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hover the right side of the band to play: region name ▾ to travel, wave gems to pick a wave, hero chips to level up, ⚖️ for tactics. A ★ means a trait is ready. Auto-tidy handles gear."
+            "value": "Hover the right side of the band to play: region name ▾ to travel, wave gems to pick a wave, hero chips to level up, the scale icon for tactics. A star means a trait is ready. Auto-tidy handles gear."
           }
         }
       }
@@ -572,6 +572,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Levels, gear, gold and regions reset and you get %lld Memory shards."
+          }
+        }
+      }
+    },
+    "레벨업": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Level up"
           }
         }
       }
@@ -928,6 +938,16 @@
         }
       }
     },
+    "주간 목표 달성 (추억 조각 +1)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly goal done (Memory +1)"
+          }
+        }
+      }
+    },
     "주간 목표 달성 ✓ (추억 조각 +1)": {
       "localizations": {
         "en": {
@@ -1076,6 +1096,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "File"
+          }
+        }
+      }
+    },
+    "판매": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sell"
           }
         }
       }
