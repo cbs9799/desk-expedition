@@ -28,6 +28,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        if let i = args.firstIndex(of: "--soak"), args.indices.contains(i + 1) {
+            Snapshot.soak(seconds: Double(args[i + 1]) ?? 600)
+            NSApp.terminate(nil)
+            return
+        }
         if let i = args.firstIndex(of: "--frames"), args.indices.contains(i + 1) {
             Snapshot.dumpFrames(to: URL(fileURLWithPath: args[i + 1]))
             NSApp.terminate(nil)

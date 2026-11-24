@@ -542,6 +542,7 @@ final class HeroActor {
     private var waveUntil = 0.0, hoverCooldown = 0.0
     private var hovered = false
     private var heightPx = 36
+    private var downSince = -1.0
 
     init(heroClass: HeroClass, index: Int) {
         self.heroClass = heroClass
@@ -626,9 +627,12 @@ final class HeroActor {
             nextJump = clock + Double.random(in: 3...7)
         }
         let jt = clock - jumpStart
+        if alive { downSince = -1 }
 
         if !alive {
-            anim = "down"; frames = sheet.frames(anim); frameIndex = min(frames.count - 1, Int((clock - hurtUntil) * 8))
+            anim = "down"; frames = sheet.frames(anim)
+            if downSince < 0 { downSince = clock }
+            frameIndex = min(frames.count - 1, Int((clock - downSince) * 8))
         } else if clock < hurtUntil {
             anim = "hurt"; frames = sheet.frames(anim); frameIndex = Int(clock * 12)
             x -= 3
@@ -652,7 +656,8 @@ final class HeroActor {
             let pingPong = [0, 1, 2, 1]
             frameIndex = pingPong[Int(clock * 4) % 4]
         }
-        let tex = frames[frameIndex % frames.count]
+        frameIndex = frameIndex.wrapped(frames.count)
+        let tex = frames[frameIndex]
         if sprite.texture !== tex {
             sprite.texture = tex
             sprite.size = CGSize(width: tex.size().width * PixelArt.scale, height: tex.size().height * PixelArt.scale)
@@ -764,7 +769,7 @@ final class MonsterActor {
         } else {
             frames = sheet.frames("move"); idx = Int(clock * (moving ? 8 : 4))
         }
-        let tex = frames[idx % max(1, frames.count)]
+        let tex = frames[idx.wrapped(frames.count)]
         if sprite.texture !== tex {
             sprite.texture = tex
             sprite.size = CGSize(width: tex.size().width * PixelArt.scale, height: tex.size().height * PixelArt.scale)
@@ -783,4 +788,13 @@ final class MonsterActor {
 
 extension CGFloat {
     func rounded(toPixel step: CGFloat) -> CGFloat { (self / step).rounded() * step }
+}
+
+extension Int {
+    /// Always-valid index into a collection of `count` (handles negatives from clock math).
+    func wrapped(_ count: Int) -> Int {
+        guard count > 0 else { return 0 }
+        let r = self % count
+        return r < 0 ? r + count : r
+    }
 }

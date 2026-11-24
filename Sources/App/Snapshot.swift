@@ -51,6 +51,34 @@ enum Snapshot {
         return off.image()
     }
 
+    /// `--soak <seconds>`: fast-forwards boss fights with a weak party in every region (heroes die often)
+    /// to shake out renderer crashes. Prints a summary and exits.
+    static func soak(seconds: Double) {
+        var p = Progress()
+        p.unlockedRegion = Region.all.count - 1
+        p.wave = Region.wavesPerRegion
+        let store = GameStore(progress: p, persist: false)
+        guard let off = StripOffscreen(store: store) else { print("soak: no Metal"); return }
+        var wipes = 0, bosses = 0
+        let ticks = Int(seconds * 10)
+        for t in 0..<ticks {
+            if t % 600 == 0 {   // every simulated minute: next region, boss wave, weak party
+                store.selectRegion((t / 600) % Region.all.count)
+                store.progress.wave = Region.wavesPerRegion
+                for i in 0..<3 { store.progress.heroes[i].level = 1 + (t / 600) * 6 }
+            }
+            let before = store.progress.bossKills
+            var wasRetreating = false
+            if case .retreating = store.battle.phase { wasRetreating = true }
+            store.step(dt: 0.1)
+            if store.progress.bossKills > before { bosses += 1 }
+            if case .retreating = store.battle.phase, !wasRetreating { wipes += 1 }
+            for _ in 0..<6 { off.step(1.0 / 60) }
+            if t % 200 == 0 { _ = off.image() }
+        }
+        print("soak ok: \(Int(seconds))s simulated, wipes \(wipes), bosses \(bosses), kills \(store.progress.totalKills)")
+    }
+
     /// `--frames <dir>`: dumps 0.1 s strip frames for eyeballing animation.
     static func dumpFrames(to dir: URL, seconds: Double = 12) {
         let store = demoStore()
