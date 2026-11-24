@@ -160,7 +160,8 @@ GROUND_LINE = (
 )
 
 STRIP_MATERIALS = {
-    "notebook": "white lined notebook paper edge with blue lines, tiny pink eraser crumbs and pencil dots on top",
+    "notebook": "the edge of a cream notebook page lying on a warm brown wooden desk (paper on top third, wood below), "
+                "tiny pink eraser crumbs and pencil shavings on top",
     "pencilcup": "warm wooden desk plank with wood grain, tiny curly pencil shavings and graphite dust on top",
     "mug": "dark wooden desk with spilled coffee drips, tiny sugar grains and coffee drops on top",
     "planter": "brown soil with small grass tufts, tiny fallen leaves and pebbles on top",

@@ -21,6 +21,8 @@ struct StripSettings: Equatable {
     var autoSell = true
     var sound = false
     var aiStyle = 0
+    /// Desk theme chosen in the shop's theme pack (-1 = follow moves).
+    var themeOverride = -1
 }
 
 @MainActor
@@ -311,6 +313,12 @@ final class GameStore {
         progress.heroes.contains { ($0.item(in: item.slot)?.score ?? 0) < item.score }
     }
 
+    /// Desk theme actually shown: the theme pack lets the player pick any; otherwise it follows moves.
+    var effectiveTheme: Int {
+        if CosmeticShop.shared.owns(.themes), DeskTheme.names.indices.contains(settings.themeOverride) { return settings.themeOverride }
+        return progress.theme
+    }
+
     // MARK: 0.2.7 systems
 
     /// Equip upgrades and sell spare low-rarity gear (both optional, on by default).
@@ -458,6 +466,7 @@ final class GameStore {
             s[keyPath: path] = d.bool(forKey: key)
         }
         s.aiStyle = d.integer(forKey: "ai.style")
+        s.themeOverride = d.object(forKey: "shop.theme") == nil ? -1 : d.integer(forKey: "shop.theme")
         return s
     }
 
@@ -474,5 +483,6 @@ final class GameStore {
         d.set(settings.autoSell, forKey: "tidy.autoSell")
         d.set(settings.sound, forKey: "fx.sound")
         d.set(settings.aiStyle, forKey: "ai.style")
+        d.set(settings.themeOverride, forKey: "shop.theme")
     }
 }

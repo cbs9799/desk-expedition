@@ -1,0 +1,33 @@
+{
+  "identifier" : "4B6F2E3A",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : true,
+      "internalID" : "6800000001",
+      "localizations" : [
+        { "description" : "밤샘·카페·새벽 책상 테마를 언제든 골라 쓰기", "displayName" : "책상 테마 팩", "locale" : "ko" },
+        { "description" : "Pick the night, café or dawn desk theme any time", "displayName" : "Desk Theme Pack", "locale" : "en_US" }
+      ],
+      "productID" : "club.lemongrove.deskexpedition.themes",
+      "referenceName" : "Desk Theme Pack",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : true,
+      "internalID" : "6800000002",
+      "localizations" : [
+        { "description" : "영웅 이름이 금빛으로, 본부에 후원 배지", "displayName" : "후원 팩", "locale" : "ko" },
+        { "description" : "Golden hero names and a supporter badge in HQ", "displayName" : "Supporter Pack", "locale" : "en_US" }
+      ],
+      "productID" : "club.lemongrove.deskexpedition.supporter",
+      "referenceName" : "Supporter Pack",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : { "_locale" : "ko", "_storefront" : "KOR" },
+  "subscriptionGroups" : [],
+  "version" : { "major" : 3, "minor" : 0 }
+}

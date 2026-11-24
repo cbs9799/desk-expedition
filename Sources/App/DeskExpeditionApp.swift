@@ -56,6 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let store = GameStore.shared
         store.start()
+        CosmeticShop.shared.start()
         mcp = MCPServer(store: store)
         mcp?.start()
         strip = StripWindowController(store: store, onOpenHQ: { [weak self] in self?.openHQ() })

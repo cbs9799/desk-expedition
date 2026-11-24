@@ -279,22 +279,22 @@ final class StripScene: SKScene {
         }
         // No painted backdrop: the desktop shows above the floor; depth comes from objects alone.
         // Far: big landmark objects on the back edge, slow and slightly faded.
-        lanes.append(PropLane(layer: farLayer, speed: Depth.far, spacing: 48...110, y: groundTop + 1) { [weak self] in
+        lanes.append(PropLane(layer: farLayer, speed: Depth.far, spacing: 4...36, y: groundTop + 4) { [weak self] in
             guard let (sheet, f) = landmark() else { return nil }
             let n = SKSpriteNode(texture: sheet.frames[f])
             n.anchorPoint = sheet.anchor
-            n.setScale(PixelArt.scale * CGFloat.random(in: 0.75...0.95))
-            self?.scenery(n, tint: (NSColor(hex: 0xBFC6E6), 0.3))
+            n.setScale(PixelArt.scale * CGFloat.random(in: 0.5...0.62))
+            self?.scenery(n, tint: (NSColor(hex: 0x9AA4CC), 0.45), alpha: 0.7)
             return n
         })
         // Mid: small hazy props on the horizon.
-        lanes.append(PropLane(layer: midLayer, speed: Depth.mid, spacing: 110...240, y: groundTop) { [weak self] in
+        lanes.append(PropLane(layer: midLayer, speed: Depth.mid, spacing: 18...110, y: groundTop + 1) { [weak self] in
             let pick: (SpriteSheet, Int)? = Bool.random() ? landmark() : props.flatMap { p in usable.randomElement().map { (p, $0) } }
             guard let (sheet, f) = pick else { return nil }
             let n = SKSpriteNode(texture: sheet.frames[f])
             n.anchorPoint = sheet.anchor
-            n.setScale(PixelArt.scale * CGFloat.random(in: 0.6...0.75))
-            self?.scenery(n, tint: (NSColor(hex: 0xBFC6E6), 0.12))
+            n.setScale(PixelArt.scale * CGFloat.random(in: 0.78...0.95))
+            self?.scenery(n, tint: (NSColor(hex: 0xBFC6E6), 0.08))
             return n
         })
         // Near: props and trophies on the back edge of the floor, behind the party.
@@ -673,7 +673,7 @@ final class StripScene: SKScene {
             FX.label(textLayer, "도감 NEW! \(store.lastDexName)", at: at, color: NSColor(hex: 0x9CF4FF), size: 13, rise: 6, life: 1.8)
             FX.burst(fxLayer, at: at, color: NSColor(hex: 0x9CF4FF), count: 16, speed: 60, life: 0.8, size: 0.1)
         }
-        if store.progress.theme != seenTheme { applyTheme(store.progress.theme) }
+        if store.effectiveTheme != seenTheme { applyTheme(store.effectiveTheme) }
         if store.dropEvents != seenDrops {
             seenDrops = store.dropEvents
             if let item = store.lastDrop { lootPop(item) }
@@ -850,6 +850,8 @@ final class HeroActor {
     private var legendGlow: SKEmitterNode?
 
     func apply(hero: HeroProgress) {
+        let gold = CosmeticShop.shared.owns(.supporter)
+        nameLabel.fontColor = gold ? NSColor(hex: 0xFFD45A) : .white
         let rarity = hero.weapon?.rarity ?? .common
         let legendary = rarity >= .rare
         if legendary, let g = legendGlow, g.particleColor != NSColor(hex: rarity.colorHex) {
@@ -1128,7 +1130,7 @@ final class MonsterActor {
         bar.node.position = CGPoint(x: 0, y: hover + bob + CGFloat(heightPx) * PixelArt.scale + 4)
         bar.set(hpFraction)
         bar.node.isHidden = dying
-        FlashShader.set(sprite, amount: realClock < flashUntil ? 1 : 0, color: flashColor)
+        FlashShader.set(sprite, amount: realClock < flashUntil ? 0.7 : 0, color: flashColor)
     }
 }
 
@@ -1244,11 +1246,13 @@ final class PropLane {
     func update(scroll: CGFloat) {
         let pos = scroll * speed
         while nextX < pos + SceneryShader.fadeRight + 120 {
+            var width: CGFloat = 0
             if let n = make() {
                 layer.addChild(n)
-                items.append((n, nextX))
+                width = n.frame.width
+                items.append((n, nextX + width * n.anchorPoint.x))
             }
-            nextX += CGFloat.random(in: spacing)
+            nextX += width + CGFloat.random(in: spacing)
         }
         items.removeAll { item in
             let x = item.x - pos

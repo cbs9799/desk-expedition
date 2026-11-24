@@ -3,8 +3,12 @@
 ## 수익 모델 (결정)
 - **유료 본편 1회 구매**: $4.99 / ₩6,600. 광고, 뽑기, 장터, 편의 과금(가방·창고 슬롯 판매)은 하지 않는다. 경쟁작 리뷰 불만 1순위가 이것이다(`docs/COMPETITORS-2026-11.md`).
 - **추가 상품은 외형만**: 책상 테마 팩(풍경 색조와 소품 세트), 모자·펫 꾸미기 팩. 게임 성능에 영향을 주지 않는다.
-  - 구현 메모: 꾸미기와 테마는 이미 데이터로 분리돼 있다(`Accessory`, `DeskTheme`, `Companion`). 판매는 StoreKit 2 비소모성 상품으로 붙이면 된다.
-  - App Store Connect에 상품을 등록하는 일은 사람이 해야 한다.
+  - **구현 완료(0.2.8)**: `Sources/App/CosmeticShop.swift`(StoreKit 2)에 비소모성 상품 2개를 넣었다.
+    - `club.lemongrove.deskexpedition.themes`: 책상 테마 팩 $2.99. 테마를 언제든 고를 수 있다.
+    - `club.lemongrove.deskexpedition.supporter`: 후원 팩 $1.99. 금빛 이름과 후원 배지.
+  - 본부 → 기록 탭에 "꾸미기 상점"이 있다. 구매, 복원, 테마 선택을 지원한다.
+  - 테스트: `Config/Products.storekit` 테스트 설정과 `Tests/ShopTests.swift`(SKTestSession으로 구매하면 테마가 해금되는지 확인). 통과했다.
+  - 직접 배포(Developer ID) 빌드는 StoreKit 상품이 열리지 않는다. 그래서 상점에 "앱스토어 버전에서 구매할 수 있어요"라고 안내하고, 게임 내용은 모두 열려 있다.
 
 ## 배포 경로
 1. **지금**: Developer ID 서명·공증 dmg를 GitHub Releases에서 배포한다(`scripts/release.sh`).
@@ -26,3 +30,10 @@
 > 맥 네이티브: 클릭 통과, 전체화면·화면 공유 자동 숨김, 저전력(행군 중 30fps, 가려지면 정지), 잠자기·부재 시간 정산.
 > AI 원정대장: Claude·Codex 같은 AI를 연결하면 대신 돌봐 줘요.
 > 1회 구매, 광고·뽑기·장터 없음.
+
+## 사람이 해야 하는 남은 단계 (Apple 계정 작업)
+이 맥에는 App Store Connect API 키(`~/.appstoreconnect/private_keys`)가 있다. 하지만 아래 작업은 사용자 계정에 기록을 만드는 일이라 확인을 받은 뒤에만 한다.
+1. App Store Connect에서 새 앱을 만든다(macOS, 번들 ID `club.lemongrove.deskexpedition`, SKU). 앱 레코드 생성은 API로 할 수 없어서 웹에서 해야 한다.
+2. 위 두 상품 ID로 비소모성 인앱 구매를 등록한다(API로 가능).
+3. "Apple Distribution" 인증서, Mac App Store 프로비저닝 프로필, 내보내기 설정을 준비한다(API로 가능).
+4. 스크린샷, 설명(위 초안), 개인정보 "수집 안 함", 연령 등급을 입력하고 심사를 제출한다.

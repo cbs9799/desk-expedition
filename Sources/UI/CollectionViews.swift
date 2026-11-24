@@ -232,6 +232,8 @@ struct RecordsView: View {
             .padding(12)
             .background(RoundedRectangle(cornerRadius: 14).fill(Theme.panel))
 
+            ShopSection()
+
             VStack(alignment: .leading, spacing: 6) {
                 Text("새 책상으로 이사").font(.system(size: 14, weight: .heavy, design: .rounded))
                 Text("레벨·장비·골드·지역이 처음으로 돌아가는 대신 추억 조각을 얻어요. 조각 하나당 공격력과 골드가 영구히 +5%. 도감·일지·트로피·이름·꾸미기는 그대로 가져가요.")
@@ -269,5 +271,57 @@ struct RecordsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 12).fill(Theme.panel))
+    }
+}
+
+/// 꾸미기 상점 (StoreKit 2, cosmetic only).
+private struct ShopSection: View {
+    @Environment(GameStore.self) private var store
+    private var shop: CosmeticShop { CosmeticShop.shared }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("꾸미기 상점").font(.system(size: 14, weight: .heavy, design: .rounded))
+                if shop.owns(.supporter) { Text("🎖 후원자").font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(Theme.gold) }
+                Spacer()
+                Text("게임 성능에 영향 없는 꾸미기만 팔아요").font(.system(size: 10, design: .rounded)).foregroundStyle(Theme.dim)
+            }
+            HStack(spacing: 8) {
+                ForEach(CosmeticShop.ID.allCases, id: \.self) { id in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(id.title).font(.system(size: 12, weight: .heavy, design: .rounded))
+                            Text(id.blurb).font(.system(size: 10, design: .rounded)).foregroundStyle(Theme.dim).lineLimit(2)
+                        }
+                        Spacer()
+                        if shop.owns(id) {
+                            Text("보유 중").font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(Color(hex: 0x9CFF9C))
+                        } else if let p = shop.products[id] {
+                            Button(p.displayPrice) { Task { await shop.buy(id) } }
+                                .buttonStyle(GameButtonStyle(color: Color(hex: 0x3BA55C), compact: true))
+                        } else {
+                            Text("—").foregroundStyle(Theme.dim)
+                        }
+                    }
+                    .padding(8)
+                    .frame(maxWidth: .infinity)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Theme.panelHi))
+                }
+            }
+            if shop.owns(.themes) {
+                SegmentRow(options: [-1] + Array(DeskTheme.names.indices), selected: store.settings.themeOverride,
+                           label: { $0 < 0 ? L10n.t("이사 순서대로") : L10n.t(DeskTheme.names[$0]) },
+                           onSelect: { store.settings.themeOverride = $0 })
+            }
+            HStack {
+                Text(shop.available ? (shop.message ?? "") : "앱스토어 버전에서 구매할 수 있어요. 지금 받은 버전(직접 배포)은 모든 게임 내용이 그대로 열려 있어요.")
+                    .font(.system(size: 10, design: .rounded)).foregroundStyle(Theme.dim)
+                Spacer()
+                if shop.available { Button("구매 복원") { Task { await shop.restore() } }.buttonStyle(GameButtonStyle(color: Theme.panelHi, compact: true)) }
+            }
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.panel))
     }
 }

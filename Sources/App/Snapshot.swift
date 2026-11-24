@@ -32,6 +32,11 @@ enum Snapshot {
         p.totalKills = 1_284
         p.bossKills = 1
 
+        if let r = ProcessInfo.processInfo.environment["DE_REGION"].flatMap(Int.init), Region.all.indices.contains(r) {
+            p.unlockedRegion = max(p.unlockedRegion, r)
+            p.regionIndex = r
+            p.wave = 3
+        }
         let store = GameStore(progress: p, persist: false)
         store.lastOffline = OfflineReport(seconds: 3 * 3600 + 25 * 60, kills: 812, gold: 6_420, items: 9, autoSold: 0, bosses: 0)
         store.banner = nil

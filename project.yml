@@ -8,8 +8,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.2.7"
-    CURRENT_PROJECT_VERSION: "9"
+    MARKETING_VERSION: "0.2.8"
+    CURRENT_PROJECT_VERSION: "10"
 targets:
   DeskExpedition:
     type: application
@@ -56,6 +56,8 @@ targets:
     platform: macOS
     sources:
       - Tests
+      - path: Config/Products.storekit
+        buildPhase: resources
     dependencies:
       - target: DeskExpedition
     settings:
@@ -72,6 +74,8 @@ schemes:
       targets:
         DeskExpedition: all
         DeskExpeditionTests: [test]
+    run:
+      storeKitConfiguration: Config/Products.storekit
     test:
       targets:
         - DeskExpeditionTests
