@@ -20,6 +20,11 @@ enum L10n {
     }
 
     static let en: [String: String] = [
+        "팔 장비가 없어요 (업그레이드는 남겨요)": "Nothing to sell (upgrades are kept)",
+        "일괄 판매 — 업그레이드 장비는 남겨요": "Bulk sell — upgrades are kept",
+        "일반만": "Common only", "고급 이하": "≤ Uncommon", "희귀 이하": "≤ Rare", "전부 (전설 포함)": "Everything (incl. Legendary)",
+        "희귀·전설 장비도 팔까요?": "Sell Rare and Legendary gear too?", "판매": "Sell",
+        "희귀·전설도 팔려면 같은 항목을 한 번 더 누르세요": "Click the same option again to sell Rare/Legendary too",
         // skills, traits, tactics, weekly
         "맨 앞 적에게 공격력 300% 피해": "300% damage to the front enemy",
         "화살 3발을 무작위 적에게 발사": "Fires 3 arrows at random enemies",

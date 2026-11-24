@@ -115,8 +115,13 @@ struct HQView: View {
                     .foregroundStyle(p.bagIsFull ? Color(hex: 0xFF7A7A) : Theme.dim)
                 Spacer()
                 Button("최적 장착") { store.autoEquip() }.buttonStyle(GameButtonStyle(color: Color(hex: 0x3BA55C), compact: true))
-                Button("일반 일괄 판매") { store.sellAll(upTo: .common) }.buttonStyle(GameButtonStyle(color: Color(hex: 0x8A6D3B), compact: true))
-                Button("고급 이하 판매") { store.sellAll(upTo: .uncommon) }.buttonStyle(GameButtonStyle(color: Color(hex: 0x8A6D3B), compact: true))
+                Button("일반 일괄 판매") { store.bulkSell(upTo: .common) }.buttonStyle(GameButtonStyle(color: Color(hex: 0x8A6D3B), compact: true))
+                BulkSellMenu {
+                    Text("일괄 판매 ▾").font(.system(size: 12, weight: .heavy, design: .rounded))
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Color(hex: 0xB0623B)))
+                        .foregroundStyle(.white)
+                }
             }
             HStack(alignment: .top, spacing: 14) {
                 LazyVGrid(columns: Array(repeating: GridItem(.fixed(46), spacing: 6), count: 8), spacing: 6) {

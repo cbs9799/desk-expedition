@@ -490,6 +490,16 @@
         }
       }
     },
+    "눌러서 장비 일괄 판매": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click to bulk-sell gear"
+          }
+        }
+      }
+    },
     "다음": {
       "localizations": {
         "en": {
@@ -838,6 +848,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Back"
+          }
+        }
+      }
+    },
+    "일괄 판매 ▾": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bulk sell ▾"
           }
         }
       }

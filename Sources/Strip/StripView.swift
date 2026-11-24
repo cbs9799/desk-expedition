@@ -79,8 +79,12 @@ struct StripHUD: View {
             HStack(spacing: 12) {
                 Text("🪙 \(p.gold.formatted())").font(.system(size: 14, weight: .black, design: .rounded))
                     .foregroundStyle(Color(hex: 0xFFD45A)).floating()
-                Text("🎒 \(p.bag.count)/\(Progress.bagCapacity)").font(.system(size: 12, weight: .heavy, design: .rounded))
-                    .foregroundStyle(p.bagIsFull ? Color(hex: 0xFF8A8A) : .white).floating()
+                BulkSellMenu(inPanel: true) {
+                    Text("🎒 \(p.bag.count)/\(Progress.bagCapacity)").font(.system(size: 12, weight: .heavy, design: .rounded))
+                        .foregroundStyle(p.bagIsFull ? Color(hex: 0xFF8A8A) : .white)
+                }
+                .floating()
+                .help("눌러서 장비 일괄 판매")
                 tacticPicker(p)
                 Spacer()
                 Text("도감 \(p.dex.count)/\(Species.slotCount)").font(.system(size: 11, weight: .bold, design: .rounded))

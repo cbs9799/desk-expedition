@@ -124,7 +124,8 @@ enum MCPTools {
                  ["reason": reasonProp]),
             tool("sell_item", "가방의 장비 하나 판매.", ["item_id": ["type": "string"], "reason": reasonProp], required: ["item_id"]),
             tool("sell_all", "지정 등급 이하 장비를 일괄 판매(누군가에게 업그레이드인 장비는 남김).",
-                 ["max_rarity": ["type": "string", "enum": ["common", "uncommon", "rare"]], "reason": reasonProp],
+                 ["max_rarity": ["type": "string", "enum": ["common", "uncommon", "rare", "legendary"],
+                                 "description": "이 등급 이하를 판매. legendary = 업그레이드를 뺀 전부"], "reason": reasonProp],
                  required: ["max_rarity"]),
             tool("select_region", "원정 지역 바꾸기(열린 지역만). 5는 서랍 심층(끝없는 층).",
                  ["region": ["type": "integer", "minimum": 0, "maximum": Region.all.count - 1], "reason": reasonProp],
@@ -219,8 +220,8 @@ enum MCPTools {
             return ["sold": it.name, "gold": store.progress.gold]
 
         case "sell_all":
-            let map: [String: Rarity] = ["common": .common, "uncommon": .uncommon, "rare": .rare]
-            guard let r = map[a["max_rarity"] as? String ?? ""] else { throw MCPToolError(message: "max_rarity: common | uncommon | rare") }
+            let map: [String: Rarity] = ["common": .common, "uncommon": .uncommon, "rare": .rare, "legendary": .legendary]
+            guard let r = map[a["max_rarity"] as? String ?? ""] else { throw MCPToolError(message: "max_rarity: common | uncommon | rare | legendary") }
             let beforeCount = store.progress.bag.count, beforeGold = store.progress.gold
             store.sellAll(upTo: r)
             let sold = beforeCount - store.progress.bag.count

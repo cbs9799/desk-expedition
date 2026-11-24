@@ -290,12 +290,35 @@ final class GameStore {
     }
 
     /// Sells every bag item at or below `rarity` that is not an upgrade for anyone.
-    func sellAll(upTo rarity: Rarity) {
-        let doomed = progress.bag.filter { $0.rarity <= rarity && !isUpgrade($0) }
-        for item in doomed { progress.gold += item.sellValue }
+    /// Items a bulk sale would remove: everything at or below `rarity` that is not an upgrade for anyone.
+    func sellCandidates(upTo rarity: Rarity) -> [Item] {
+        progress.bag.filter { $0.rarity <= rarity && !isUpgrade($0) }
+    }
+
+    /// What a bulk sale up to `rarity` would yield: (items, gold).
+    func sellPreview(upTo rarity: Rarity) -> (count: Int, gold: Int) {
+        let c = sellCandidates(upTo: rarity)
+        return (c.count, c.reduce(0) { $0 + $1.sellValue })
+    }
+
+    /// Sells every bag item at or below `rarity` in one go (upgrades are always kept). Returns (items, gold).
+    @discardableResult
+    func sellAll(upTo rarity: Rarity) -> (count: Int, gold: Int) {
+        let doomed = sellCandidates(upTo: rarity)
+        guard !doomed.isEmpty else { return (0, 0) }
+        let gold = doomed.reduce(0) { $0 + $1.sellValue }
+        progress.gold += gold
         let ids = Set(doomed.map(\.id))
         progress.bag.removeAll { ids.contains($0.id) }
         refreshBagFlag()
+        return (doomed.count, gold)
+    }
+
+    /// Bulk sale triggered by the player (HQ / strip): sells and tells them what happened.
+    func bulkSell(upTo rarity: Rarity) {
+        let r = sellAll(upTo: rarity)
+        showBanner(r.count == 0 ? L10n.t("팔 장비가 없어요 (업그레이드는 남겨요)")
+                                : "🎒 \(r.count)개 판매 · 🪙 +\(r.gold.formatted())", seconds: 4)
     }
 
     /// Equips the best item per slot, giving the biggest weapon to the hardest hitter and armor to the front line.

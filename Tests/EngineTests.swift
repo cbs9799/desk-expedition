@@ -344,4 +344,27 @@ final class EngineTests: XCTestCase {
         XCTAssertEqual(strip.panel.frame.height, StripLayout.height * 1.25, accuracy: 0.5)
         strip.panel.orderOut(nil)
     }
+
+    @MainActor
+    func testBulkSellPreviewMatchesSaleAndKeepsUpgrades() {
+        var p = Progress()
+        p.heroes[0].weapon = Item(slot: .weapon, rarity: .rare, name: "x", power: 50, regionIndex: 0)
+        p.heroes[1].weapon = Item(slot: .weapon, rarity: .rare, name: "x", power: 50, regionIndex: 0)
+        p.heroes[2].weapon = Item(slot: .weapon, rarity: .rare, name: "x", power: 50, regionIndex: 0)
+        p.bag = [
+            Item(slot: .weapon, rarity: .common, name: "a", power: 3, regionIndex: 0),
+            Item(slot: .weapon, rarity: .rare, name: "b", power: 10, regionIndex: 0),
+            Item(slot: .weapon, rarity: .legendary, name: "c", power: 20, regionIndex: 0),
+            Item(slot: .weapon, rarity: .legendary, name: "upgrade", power: 999, regionIndex: 0),
+        ]
+        let store = GameStore(progress: p, persist: false)
+        let preview = store.sellPreview(upTo: .legendary)
+        XCTAssertEqual(preview.count, 3, "the upgrade is never offered for sale")
+        let gold0 = store.progress.gold
+        let sold = store.sellAll(upTo: .legendary)
+        XCTAssertEqual(sold.count, preview.count)
+        XCTAssertEqual(store.progress.gold - gold0, preview.gold)
+        XCTAssertEqual(store.progress.bag.map(\.name), ["upgrade"])
+        XCTAssertEqual(store.sellAll(upTo: .legendary).count, 0)
+    }
 }
