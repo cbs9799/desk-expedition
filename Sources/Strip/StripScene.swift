@@ -817,6 +817,8 @@ final class HeroActor {
     private var hovered = false
     private var heightPx = 36
     private var downSince = -1.0
+    private var walkPhase = 0.0
+    private var stride: CGFloat = 0
 
     init(heroClass: HeroClass, index: Int) {
         self.heroClass = heroClass
@@ -842,7 +844,7 @@ final class HeroActor {
         nameLabel.position = CGPoint(x: 0, y: CGFloat(heightPx) * PixelArt.scale + 11)
         nameLabel.alpha = 0
         root.addChild(nameLabel)
-        nextJump = Double.random(in: 2...5) + Double(index)
+        nextJump = Double.random(in: 10...20) + Double(index) * 4
     }
 
     func resetTrackers() { seenAttack = -10; seenSkill = -10; seenHit = -10 }
@@ -931,10 +933,11 @@ final class HeroActor {
         // Random hops while marching (and on demand via hop()).
         if moving && alive && clock > nextJump {
             jumpStart = clock
-            nextJump = clock + Double.random(in: 3...7)
+            nextJump = clock + Double.random(in: 14...26)   // an occasional happy hop, not constant bouncing
         }
         let jt = clock - jumpStart
         if alive { downSince = -1 }
+        stride = 0
 
         if !alive {
             anim = "down"; frames = sheet.frames(anim)
@@ -952,12 +955,16 @@ final class HeroActor {
             frameIndex = jt < 0.07 ? 0 : jt < 0.42 ? 1 : 2
             if jt >= 0.07 && jt < 0.45 {
                 let f = (jt - 0.07) / 0.38
-                lift = CGFloat(sin(f * .pi)) * 15
+                lift = CGFloat(sin(f * .pi)) * 11
             }
         } else if victory || clock < waveUntil {
             anim = "victory"; frames = sheet.frames(anim); frameIndex = Int(clock * 5)
         } else if moving {
-            anim = "walk"; frames = sheet.frames(anim); frameIndex = Int(clock * Double(7 + speed * 0.09))
+            anim = "walk"; frames = sheet.frames(anim)
+            walkPhase += dt * Double(6 + speed * 0.07)          // frames per second, accumulated → never skips back
+            frameIndex = Int(walkPhase)
+            // Two footfalls per 6-frame cycle: a soft 1pt bounce on each stride smooths the AI frames.
+            stride = CGFloat(abs(sin(walkPhase / Double(max(1, frames.count)) * 2 * .pi))) * 1.0
         } else {
             anim = "idle"; frames = sheet.frames(anim)
             let pingPong = [0, 1, 2, 1]
@@ -982,7 +989,7 @@ final class HeroActor {
         FlashShader.set(sprite, amount: flashing ? 0.85 : 0, color: flashColor)
 
         root.position = CGPoint(x: x.rounded(toPixel: 0.5), y: groundY)
-        sprite.position = CGPoint(x: 0, y: lift.rounded(toPixel: 0.5))
+        sprite.position = CGPoint(x: 0, y: (lift + stride).rounded(toPixel: 0.5))
         shadow.setScale(1 - lift / 40)
         shadow.position = CGPoint(x: 0, y: 1)
         bar.node.position.y = CGFloat(heightPx) * PixelArt.scale + 5 + lift
@@ -1016,6 +1023,8 @@ final class MonsterActor {
         didSet { if dying { deadStart = lastClock } }
     }
     private var lastClock = 0.0
+    private var movePhase = 0.0
+    private var lastMoveClock = 0.0
     private var standOff: CGFloat = 0
 
     let variant: MonsterVariant
@@ -1095,6 +1104,8 @@ final class MonsterActor {
     func flash(color: NSColor, until t: Double) { flashColor = color; flashUntil = t }
 
     func update(clock: Double, realClock: Double, engineX ex: CGFloat, groundY: CGFloat, hpFraction: Double) {
+        defer { lastMoveClock = clock }
+        if lastMoveClock == 0 { lastMoveClock = clock }
         lastClock = clock
         engineX = Double(ex)
         guard let sheet else { return }
@@ -1113,7 +1124,9 @@ final class MonsterActor {
             idx = min(frames.count - 1, Int((clock - attackStart) * 12))
             drawX -= [0, 4, 8, 3][min(3, idx)]
         } else {
-            frames = sheet.frames("move"); idx = Int(clock * (moving ? 8 : 4))
+            frames = sheet.frames("move")
+            movePhase += (clock - lastMoveClock) * (moving ? 8 : 4)
+            idx = Int(movePhase)
         }
         let tex = frames[idx.wrapped(frames.count)]
         if sprite.texture !== tex {

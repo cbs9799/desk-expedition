@@ -149,6 +149,15 @@ def anchor_x(a):
     return float(np.median(xs[lower]))
 
 
+def torso_x(a):
+    """Mean column of the upper-middle body (below the head, above the legs)."""
+    op = a[..., 3] > 0
+    ys, xs = np.nonzero(op)
+    top, h = ys.min(), ys.max() - ys.min()
+    band = (ys > top + h * 0.35) & (ys < top + h * 0.65)
+    return float(xs[band].mean()) if band.any() else float(xs.mean())
+
+
 def process_sheet(key):
     rows, cols, target_h, anims = layout(key)
     img, fg = load_rgba(RAW / f"{key}.png")
@@ -170,6 +179,13 @@ def process_sheet(key):
 
     # common cell: every frame bottom-aligned, anchor column aligned
     ax = [anchor_x(fr) for fr in frames]
+    if anims and "walk" in anims:
+        # Walk cycles: align on the torso instead of the feet so the body doesn't wobble sideways between frames.
+        walk = list(anims["walk"])
+        torso = [torso_x(frames[i]) for i in walk]
+        base = float(np.median([t - a for t, a in zip(torso, (ax[i] for i in walk))]))
+        for i, tx in zip(walk, torso):
+            ax[i] = tx - base
     left = max(int(np.ceil(a)) for a in ax) + 1
     right = max(fr.shape[1] - int(np.floor(a)) for fr, a in zip(frames, ax)) + 1
     cell_w = left + right
