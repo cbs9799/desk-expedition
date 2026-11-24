@@ -1,0 +1,61 @@
+name: DeskExpedition
+options:
+  bundleIdPrefix: club.lemongrove
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  DeskExpedition:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: 책상 원정대
+        CFBundleName: 책상 원정대
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.role-playing-games
+        NSHumanReadableCopyright: "© 2026 Lemongrove"
+    entitlements:
+      path: Sources/DeskExpedition.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: club.lemongrove.deskexpedition
+        PRODUCT_NAME: DeskExpedition
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: YES
+        GENERATE_INFOPLIST_FILE: NO
+  DeskExpeditionTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests
+    dependencies:
+      - target: DeskExpedition
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: club.lemongrove.deskexpedition.tests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/DeskExpedition.app/Contents/MacOS/DeskExpedition"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+schemes:
+  DeskExpedition:
+    build:
+      targets:
+        DeskExpedition: all
+        DeskExpeditionTests: [test]
+    test:
+      targets:
+        - DeskExpeditionTests

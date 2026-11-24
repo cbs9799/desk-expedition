@@ -1,0 +1,257 @@
+import AppKit
+import Foundation
+import Observation
+import UserNotifications
+
+struct StripSettings: Equatable {
+    enum Alignment: Int, CaseIterable { case left, center, right
+        var name: String { ["왼쪽", "가운데", "오른쪽"][rawValue] }
+    }
+
+    var visible = true
+    var clickThrough = true
+    var screenIndex = 0
+    var alignment: Alignment = .left
+}
+
+@MainActor
+@Observable
+final class GameStore {
+    static let shared = GameStore()
+
+    var progress: Progress
+    var battle: Battle
+    var banner: String?
+    var lastOffline: OfflineReport?
+    var settings: StripSettings {
+        didSet { saveSettings(); onSettingsChanged?() }
+    }
+
+    /// Lowered when the strip is hidden/occluded to save power.
+    var lowPower = false {
+        didSet { if oldValue != lowPower { restartTimer() } }
+    }
+
+    @ObservationIgnored var onSettingsChanged: (() -> Void)?
+    @ObservationIgnored private var timer: Timer?
+    @ObservationIgnored private var bannerExpiry = Date.distantPast
+    @ObservationIgnored private var lastSave = Date()
+    @ObservationIgnored private var rng = SystemRandomNumberGenerator()
+    @ObservationIgnored private let persist: Bool
+
+    init(progress: Progress? = nil, persist: Bool = true) {
+        self.persist = persist
+        let loaded = progress ?? (persist ? GameStore.loadProgress() : nil) ?? Progress()
+        self.progress = loaded
+        self.battle = Engine.newBattle(for: loaded)
+        self.settings = persist ? GameStore.loadSettings() : StripSettings()
+    }
+
+    // MARK: Lifecycle
+
+    func start() {
+        settleOfflineTime()
+        restartTimer()
+        requestNotificationPermission()
+    }
+
+    func settleOfflineTime() {
+        let away = Date().timeIntervalSince(progress.lastActive)
+        guard away > 120 else { return }
+        var p = progress
+        let report = Engine.settleOffline(&p, seconds: away, rng: &rng)
+        p.lastActive = Date()
+        progress = p
+        battle = Engine.newBattle(for: p)
+        lastOffline = report
+        showBanner("자리를 비운 \(report.durationText) 동안 \(report.kills)마리 처치 · 골드 +\(report.gold.formatted()) · 전리품 \(report.items)개",
+                   seconds: 20)
+        save()
+    }
+
+    private func restartTimer() {
+        timer?.invalidate()
+        let interval = lowPower ? 0.5 : 0.1
+        let t = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.step(dt: interval) }
+        }
+        t.tolerance = interval * 0.2
+        RunLoop.main.add(t, forMode: .common)
+        timer = t
+    }
+
+    func step(dt: Double) {
+        var p = progress
+        var b = battle
+        let report = Engine.tick(&p, &b, dt: dt, rng: &rng, effects: !lowPower)
+        if p != progress { progress = p }
+        battle = b
+        handle(report)
+        if let _ = banner, Date() > bannerExpiry { banner = nil }
+        if Date().timeIntervalSince(lastSave) > 30 { save() }
+    }
+
+    private func handle(_ report: TickReport) {
+        if let r = report.regionUnlocked {
+            showBanner("새 지역 해금: \(Region.all[r].name)!", seconds: 6)
+        } else if let boss = report.bossesDefeated.last {
+            showBanner("보스 처치: \(boss)!", seconds: 5)
+        } else if let legendary = report.drops.first(where: { $0.rarity == .legendary }) {
+            showBanner("전설 전리품! \(legendary.name)", seconds: 6)
+        }
+        if report.bagBecameFull {
+            showBanner("가방이 가득 찼어요 — 새 전리품은 절반 값에 자동 판매돼요", seconds: 8)
+            notify(title: "가방이 가득 찼어요", body: "원정 본부에서 장비를 정리하세요. 그동안 새 전리품은 절반 값에 자동 판매돼요.")
+        }
+    }
+
+    func showBanner(_ text: String, seconds: Double) {
+        banner = text
+        bannerExpiry = Date().addingTimeInterval(seconds)
+    }
+
+    // MARK: Player actions
+
+    func levelUp(_ heroIndex: Int) {
+        let cost = progress.heroes[heroIndex].levelUpCost
+        guard progress.gold >= cost else { return }
+        let oldMax = progress.heroes[heroIndex].maxHP
+        progress.gold -= cost
+        progress.heroes[heroIndex].level += 1
+        adjustHP(heroIndex, oldMax: oldMax)
+    }
+
+    func equip(_ item: Item, on heroIndex: Int) {
+        guard let bagIndex = progress.bag.firstIndex(where: { $0.id == item.id }) else { return }
+        let oldMax = progress.heroes[heroIndex].maxHP
+        progress.bag.remove(at: bagIndex)
+        if let previous = progress.heroes[heroIndex].item(in: item.slot) {
+            progress.bag.insert(previous, at: min(bagIndex, progress.bag.count))
+        }
+        progress.heroes[heroIndex].setItem(item, in: item.slot)
+        adjustHP(heroIndex, oldMax: oldMax)
+        refreshBagFlag()
+    }
+
+    func unequip(slot: GearSlot, from heroIndex: Int) {
+        guard let item = progress.heroes[heroIndex].item(in: slot), !progress.bagIsFull else { return }
+        let oldMax = progress.heroes[heroIndex].maxHP
+        progress.heroes[heroIndex].setItem(nil, in: slot)
+        progress.bag.append(item)
+        adjustHP(heroIndex, oldMax: oldMax)
+    }
+
+    func sell(_ item: Item) {
+        guard let i = progress.bag.firstIndex(where: { $0.id == item.id }) else { return }
+        progress.gold += item.sellValue
+        progress.bag.remove(at: i)
+        refreshBagFlag()
+    }
+
+    /// Sells every bag item at or below `rarity` that is not an upgrade for anyone.
+    func sellAll(upTo rarity: Rarity) {
+        let doomed = progress.bag.filter { $0.rarity <= rarity && !isUpgrade($0) }
+        for item in doomed { progress.gold += item.sellValue }
+        let ids = Set(doomed.map(\.id))
+        progress.bag.removeAll { ids.contains($0.id) }
+        refreshBagFlag()
+    }
+
+    /// Equips the best item per slot, giving the biggest weapon to the hardest hitter and armor to the front line.
+    func autoEquip() {
+        for slot in GearSlot.allCases {
+            let order: [Int] = slot == .weapon ? [2, 1, 0] : [0, 1, 2]
+            for hero in order {
+                let current = progress.heroes[hero].item(in: slot)?.score ?? 0
+                if let best = progress.bag.filter({ $0.slot == slot }).max(by: { $0.score < $1.score }),
+                   best.score > current {
+                    equip(best, on: hero)
+                }
+            }
+        }
+    }
+
+    func isUpgrade(_ item: Item) -> Bool {
+        progress.heroes.contains { ($0.item(in: item.slot)?.score ?? 0) < item.score }
+    }
+
+    func selectRegion(_ index: Int) {
+        guard index <= progress.unlockedRegion, index != progress.regionIndex else { return }
+        progress.regionIndex = index
+        progress.wave = 1
+        battle = Engine.newBattle(for: progress)
+    }
+
+    private func adjustHP(_ heroIndex: Int, oldMax: Double) {
+        guard battle.heroes.indices.contains(heroIndex) else { return }
+        let newMax = progress.heroes[heroIndex].maxHP
+        var h = battle.heroes[heroIndex]
+        if h.alive { h.hp = min(newMax, max(1, h.hp + (newMax - oldMax))) }
+        battle.heroes[heroIndex] = h
+    }
+
+    private func refreshBagFlag() {
+        if !progress.bagIsFull { progress.bagFullNotified = false }
+    }
+
+    // MARK: Notifications
+
+    private func requestNotificationPermission() {
+        guard persist, Bundle.main.bundleIdentifier != nil else { return }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    }
+
+    private func notify(title: String, body: String) {
+        guard persist, Bundle.main.bundleIdentifier != nil else { return }
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    // MARK: Persistence
+
+    private static var saveURL: URL {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("DeskExpedition", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("save.json")
+    }
+
+    func save() {
+        lastSave = Date()
+        guard persist else { return }
+        progress.lastActive = Date()
+        do {
+            let data = try JSONEncoder().encode(progress)
+            try data.write(to: GameStore.saveURL, options: .atomic)
+        } catch {
+            NSLog("DeskExpedition save failed: \(error)")
+        }
+    }
+
+    private static func loadProgress() -> Progress? {
+        guard let data = try? Data(contentsOf: saveURL) else { return nil }
+        return try? JSONDecoder().decode(Progress.self, from: data)
+    }
+
+    private static func loadSettings() -> StripSettings {
+        let d = UserDefaults.standard
+        var s = StripSettings()
+        if d.object(forKey: "strip.visible") != nil { s.visible = d.bool(forKey: "strip.visible") }
+        if d.object(forKey: "strip.clickThrough") != nil { s.clickThrough = d.bool(forKey: "strip.clickThrough") }
+        s.screenIndex = d.integer(forKey: "strip.screen")
+        s.alignment = StripSettings.Alignment(rawValue: d.integer(forKey: "strip.alignment")) ?? .left
+        return s
+    }
+
+    private func saveSettings() {
+        guard persist else { return }
+        let d = UserDefaults.standard
+        d.set(settings.visible, forKey: "strip.visible")
+        d.set(settings.clickThrough, forKey: "strip.clickThrough")
+        d.set(settings.screenIndex, forKey: "strip.screen")
+        d.set(settings.alignment.rawValue, forKey: "strip.alignment")
+    }
+}
