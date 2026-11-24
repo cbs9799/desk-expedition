@@ -30,7 +30,7 @@ def layout(key):
         flyer = name in {"paper_crane", "clip_bat", "teabag_ghost", "dandelion_sprite", "cursor_ghost"}
         h = 50 if boss else 32 if heavy else 20 if flyer else 20
         return 3, 4, h, MON_ANIMS
-    if key.startswith("props_") or key == "accessories":
+    if key.startswith("props_") or key in ("accessories", "trophies"):
         return 1, 6, None, None
     return None
 
@@ -150,13 +150,13 @@ def process_sheet(key):
         f = target_h / float(np.median(ref))
     else:  # props/accessories: scale relative to the tallest item
         tallest = max(b[3] - b[1] for b in boxes if b)
-        f = (44 if key.startswith("props_") else 12) / tallest
+        f = (44 if key.startswith("props_") else 18 if key == "trophies" else 12) / tallest
     frames = [shrink(img, b, f) if b else np.zeros((1, 1, 4), np.uint8) for b in boxes]
     frames = quantize(frames)
     team = TEAM.get(key)
     if key.startswith("hero_"):
         frames = [add_outline(fr, team) for fr in frames]
-    elif key.startswith("mon_") or key.startswith("props_"):
+    elif key.startswith("mon_") or key.startswith("props_") or key == "trophies":
         frames = [add_outline(fr, OUTLINE_DARK) for fr in frames]
 
     # common cell: every frame bottom-aligned, anchor column aligned
@@ -180,25 +180,67 @@ def process_sheet(key):
     return f"{key}: cell {cell_w}x{cell_h}, scale {f:.3f}"
 
 
+def min_seam(err):
+    """Minimum-cost top-to-bottom path through an (H, b) error map (image quilting)."""
+    H, b = err.shape
+    cost = err.copy()
+    for y in range(1, H):
+        prev = cost[y - 1]
+        left = np.concatenate([[np.inf], prev[:-1]])
+        right = np.concatenate([prev[1:], [np.inf]])
+        cost[y] += np.minimum(np.minimum(left, prev), right)
+    seam = np.zeros(H, int)
+    seam[-1] = int(np.argmin(cost[-1]))
+    for y in range(H - 2, -1, -1):
+        x = seam[y + 1]
+        lo, hi = max(0, x - 1), min(b, x + 2)
+        seam[y] = lo + int(np.argmin(cost[y, lo:hi]))
+    return seam, float(cost[-1].min())
+
+
+MIN_FRAC = 0.6
+
+
+def make_loop(a, b=12):
+    """Turn a non-repeating band into a seamless horizontal loop.
+    Searches any window [x0, x1) (at least 60% of the width) whose start and end look alike, then joins
+    them along the least-different vertical path (image quilting) — no ghosting, no half-faded objects.
+    Returns (tile, seam_cost_per_row)."""
+    H, W = a.shape[:2]
+    best = None
+    for x0 in range(0, int(W * 0.35)):
+        for x1 in range(x0 + int(W * MIN_FRAC), W - b + 1):
+            err = ((a[:, x0:x0 + b] - a[:, x1:x1 + b]) ** 2).sum(-1)
+            if best is not None and err.min(1).sum() / H > best[0]:
+                continue   # cheap lower bound
+            seam, c = min_seam(err)
+            score = c / H
+            if best is None or score < best[0]:
+                best = (score, x0, x1, seam)
+    cost, x0, x1, seam = best
+    tile = a[:, x0:x1].copy()
+    for y in range(H):
+        k = seam[y]
+        tile[y, :k] = a[y, x1:x1 + k]      # left of the seam continues from the window's end
+    return tile, cost
+
+
 def process_backdrop(key):
-    """Opaque scene → two parallax bands split at the horizon (far: scenery, ground: walkable floor).
-    Edges are cross-faded so each band loops seamlessly without mirroring."""
-    img = np.asarray(Image.open(RAW / f"{key}.png").convert("RGB")).astype(np.float32)
-    img = img[8:-8, 8:-8]
-    H, W = img.shape[:2]
+    """Opaque scene → two parallax bands split at the horizon (far: scenery, ground: walkable floor),
+    each made into a seamless loop."""
+    img = Image.open(RAW / f"{key}.png").convert("RGB")
+    W, H = img.size
+    img = img.crop((8, 8, W - 8, H - 8)); W, H = img.size
     top, horizon = int(H * 0.30), int(H * 0.76)
-    b = int(W * 0.18)
-    ramp = (np.arange(b) / b)[None, :, None]
-    tile = img[:, :W - b].copy()
-    tile[:, :b] = img[:, :b] * ramp + img[:, W - b:] * (1 - ramp)
     f = 66.0 / (H - top)                       # whole band = 66 art px (≈100pt)
     out = {}
     for name, (y0, y1) in (("far", (top, horizon)), ("ground", (horizon, H))):
-        band = Image.fromarray(tile[y0:y1].clip(0, 255).astype(np.uint8))
-        band = band.resize((round(band.size[0] * f), round((y1 - y0) * f)), Image.BOX)
+        band = img.crop((0, y0, W, y1))
+        band = band.resize((round(W * f), round((y1 - y0) * f)), Image.BOX)
         band = band.quantize(48, method=Image.MEDIANCUT, dither=Image.NONE).convert("RGB")
-        band.save(OUT / f"{key}_{name}.png")
-        out[name] = band.size
+        tile, cost = make_loop(np.asarray(band).astype(np.float32))
+        Image.fromarray(tile.clip(0, 255).astype(np.uint8)).save(OUT / f"{key}_{name}.png")
+        out[name] = (tile.shape[1], tile.shape[0], round(cost))
     return f"{key}: {out}"
 
 

@@ -36,6 +36,9 @@ final class GameStore {
     /// Counters the strip renderer polls to fire one-shot celebrations.
     @ObservationIgnored private(set) var legendaryDrops = 0
     @ObservationIgnored private(set) var levelUps = [0, 0, 0]
+    @ObservationIgnored private(set) var dexDiscoveries = 0
+    @ObservationIgnored private(set) var lastDexName = ""
+    @ObservationIgnored private(set) var movesSeen = 0
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var bannerExpiry = Date.distantPast
     @ObservationIgnored private var lastSave = Date()
@@ -53,6 +56,10 @@ final class GameStore {
     // MARK: Lifecycle
 
     func start() {
+        if progress.journal.isEmpty {
+            var r = TickReport()
+            Journal.unlock("start", in: &progress, report: &r)
+        }
         settleOfflineTime()
         restartTimer()
         requestNotificationPermission()
@@ -67,7 +74,10 @@ final class GameStore {
         progress = p
         battle = Engine.newBattle(for: p)
         lastOffline = report
-        showBanner("자리를 비운 \(report.durationText) 동안 \(report.kills)마리 처치 · 골드 +\(report.gold.formatted()) · 전리품 \(report.items)개",
+        var extra = ""
+        if report.newDex > 0 { extra += " · 새 도감 \(report.newDex)" }
+        if report.pages > 0 { extra += " · 일지 \(report.pages)장" }
+        showBanner("자리를 비운 \(report.durationText) 동안 \(report.kills)마리 처치 · 골드 +\(report.gold.formatted()) · 전리품 \(report.items)개\(extra)",
                    seconds: 20)
         save()
     }
@@ -95,6 +105,10 @@ final class GameStore {
     }
 
     private func handle(_ report: TickReport) {
+        if let name = report.newDex.last {
+            dexDiscoveries += report.newDex.count
+            lastDexName = name
+        }
         if let r = report.regionUnlocked {
             showBanner("새 지역 해금: \(Region.all[r].name)!", seconds: 6)
         } else if let boss = report.bossesDefeated.last {
@@ -103,6 +117,16 @@ final class GameStore {
             showBanner("전설 전리품! \(legendary.name)", seconds: 6)
         }
         if report.drops.contains(where: { $0.rarity == .legendary }) { legendaryDrops += 1 }
+        if report.regionUnlocked == nil, report.bossesDefeated.isEmpty, banner == nil || Date() > bannerExpiry {
+            if let t = report.trophies.last {
+                showBanner("트로피 획득: \(Trophy.names[t])", seconds: 5)
+            } else if let page = report.journalPages.last {
+                let e = Journal.text(page, names: progress.heroes.map(\.displayName))
+                showBanner("📖 일지 한 장: \(e.title)", seconds: 5)
+            } else if let name = report.newDex.last {
+                showBanner("도감 등록: \(name)!", seconds: 4)
+            }
+        }
         if report.bagBecameFull {
             showBanner("가방이 가득 찼어요 — 새 전리품은 절반 값에 자동 판매돼요", seconds: 8)
             notify(title: "가방이 가득 찼어요", body: "원정 본부에서 장비를 정리하세요. 그동안 새 전리품은 절반 값에 자동 판매돼요.")
@@ -124,6 +148,41 @@ final class GameStore {
         progress.heroes[heroIndex].level += 1
         adjustHP(heroIndex, oldMax: oldMax)
         levelUps[heroIndex] += 1
+        var r = TickReport()
+        for lv in [10, 25, 50, 100] where progress.heroes[heroIndex].level >= lv {
+            Journal.unlock("level\(lv)", in: &progress, report: &r)
+        }
+        if let page = r.journalPages.last {
+            showBanner("📖 일지 한 장: \(Journal.text(page, names: progress.heroes.map(\.displayName)).title)", seconds: 5)
+        }
+    }
+
+    /// 이사: resets the run, converts it into permanent 추억 조각, and changes the desk theme.
+    /// Dex, journal, trophies, uniques, names and hats stay.
+    func moveDesk() {
+        guard Move.canMove(progress) else { return }
+        let gain = Move.gain(progress)
+        var p = progress
+        p.memories += gain
+        p.moves += 1
+        p.gold = 0
+        p.bag = []
+        p.regionIndex = 0
+        p.unlockedRegion = 0
+        p.wave = 1
+        p.runBestFloor = 0
+        p.bagFullNotified = false
+        for i in p.heroes.indices {
+            p.heroes[i].level = 1
+            p.heroes[i].weapon = nil
+            p.heroes[i].armor = nil
+        }
+        var r = TickReport()
+        Journal.unlock("move\(min(p.moves, 3))", in: &p, report: &r)
+        progress = p
+        battle = Engine.newBattle(for: p)
+        showBanner("새 책상으로 이사했어요: \(DeskTheme.names[p.theme]) · 추억 조각 +\(gain)", seconds: 8)
+        save()
     }
 
     func rename(_ heroIndex: Int, to name: String) {

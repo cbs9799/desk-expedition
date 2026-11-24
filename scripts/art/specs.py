@@ -79,7 +79,9 @@ BACKDROP = (
     "(crisp chunky pixels, rich saturated palette, NO anti-aliasing, NO blur, no characters, no text, no UI). "
     "Landscape, horizon at about 70% height; the bottom 25% is a flat walkable ground surface seen from the side. "
     "Scene: {scene}, seen at miniature scale as if you were a tiny person on the desk. "
-    "The left and right edges should continue naturally so the image can tile horizontally."
+    "The left and right edges should continue naturally so the image can tile horizontally: keep every large "
+    "object (pencils, cups, boxes) fully inside the middle 70% of the image, and let the outer 15% on each side "
+    "show only continuous background (sky, distant scenery, ground) with no objects cut by the edge."
 )
 
 PROPS = (
@@ -110,4 +112,38 @@ def all_specs():
         specs[f"bg_{region}"] = "Image: " + BACKDROP.format(scene=scene)
         specs[f"props_{region}"] = "Image: " + PROPS.format(scene=scene)
     specs["accessories"] = "Image: " + ACCESSORIES
+    return specs
+
+
+# --- v0.2.2: rare guests, endless drawer depths, boss trophies ---------------------------------
+GUESTS = [
+    ("guest_usb_fairy", "a tiny cute FAIRY made from a lost USB flash drive, glowing cyan LED wings, sparkly, shy smile", "flutter flying"),
+    ("guest_gold_pencil", "a cute floating GOLDEN PENCIL spirit with a glowing tip and a tiny halo, sparkly gold", "float bobbing"),
+    ("guest_sugar_prince", "a cute tiny SUGAR CUBE prince with a little cape and crown, sparkling white", "proud strut walk"),
+    ("guest_ladybug_knight", "a cute LADYBUG knight standing upright with a tiny leaf shield and thorn lance", "march walk"),
+    ("guest_pixel_cat", "a cute glowing SCREENSAVER CAT made of blue light and pixels, floating, starry tail", "float bobbing"),
+]
+
+DRAWER_SCENE = ("the inside of a dark desk DRAWER: rubber bands, scattered coins, old receipts, paper clips, a flashlight "
+                "beam from above, mysterious and cozy")
+
+TROPHIES = (
+    "A row of 6 separate tiny 2D pixel-art trophy items for a side-scrolling game, late-1990s 32-bit console style "
+    "(crisp chunky pixels, 1px dark outline, saturated colors, NO anti-aliasing). Solid flat pure magenta (#FF00FF) "
+    "background, evenly spaced, not touching, each standing upright on a small wooden plaque, no text. In order: "
+    "a giant bent STAPLE, a pencil-sharpener BLADE, a broken MUG HANDLE, a pink SUCCULENT FLOWER, a computer mouse "
+    "SCROLL WHEEL, an old brass DRAWER KEY."
+)
+
+_base_all_specs = all_specs
+
+
+def all_specs():
+    specs = _base_all_specs()
+    for key, desc, move in GUESTS:
+        specs[f"mon_{key}"] = f"Image: {STYLE}\n\nMonster: {desc}. {WORLD} Side view facing LEFT in every frame.\n\n" + \
+            MONSTER_LAYOUT.format(move=move)
+    specs["bg_drawer"] = "Image: " + BACKDROP.format(scene=DRAWER_SCENE)
+    specs["props_drawer"] = "Image: " + PROPS.format(scene=DRAWER_SCENE)
+    specs["trophies"] = "Image: " + TROPHIES
     return specs

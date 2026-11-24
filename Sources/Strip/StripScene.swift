@@ -9,6 +9,8 @@ import SpriteKit
 final class StripScene: SKScene {
     static let viewport = CGRect(x: 0, y: 0, width: StripLayout.battleWidth, height: StripLayout.height)
     static let groundY: CGFloat = 12
+    /// Prop frames that don't read well standing on the ground.
+    static let skipProps: [String: Set<Int>] = ["drawer": [5]]
     /// Where gold glints fly to (HUD gold counter, scene coordinates).
     static let goldTarget = CGPoint(x: StripLayout.battleWidth + 4, y: 34)
 
@@ -46,6 +48,7 @@ final class StripScene: SKScene {
     private var lastEffectID = 0
     private var lastMonsterCount = 0
     private var numberStack = 0
+    private var nextAnnounceAt = 0.0
     private var victoryUntil: Double = 0
     private var seenLegendary = 0
     private var seenLevelUps = [0, 0, 0]
@@ -191,8 +194,24 @@ final class StripScene: SKScene {
 
         // Foreground props stream past at ground speed.
         while nextPropX < scroll + Self.viewport.width + 80 {
-            if let sheet = SpriteSheet.named("props_\(sceneKey)") {
-                let n = SKSpriteNode(texture: sheet.frames[Int.random(in: 0..<sheet.frames.count)])
+            let owned = Array(store?.progress.trophies ?? [])
+            if !owned.isEmpty, Double.random(in: 0..<1) < 0.22, let tsheet = SpriteSheet.named("trophies"),
+               let t = owned.randomElement(), tsheet.frames.indices.contains(t) {
+                let n = SKSpriteNode(texture: tsheet.frames[t])
+                n.anchorPoint = tsheet.anchor
+                n.setScale(PixelArt.scale)
+                n.zPosition = 2
+                let glint = SKSpriteNode(texture: FX.flare, size: CGSize(width: 14, height: 14))
+                glint.color = FX.gold; glint.colorBlendFactor = 1; glint.blendMode = .add
+                glint.position = CGPoint(x: 2, y: CGFloat(tsheet.meta.cellH) * 0.7)
+                glint.setScale(1 / PixelArt.scale)
+                glint.run(.repeatForever(.sequence([.fadeAlpha(to: 0.1, duration: 0.5), .fadeAlpha(to: 1, duration: 0.5)])))
+                n.addChild(glint)
+                propLayer.addChild(n)
+                props.append((n, nextPropX))
+            } else if let sheet = SpriteSheet.named("props_\(sceneKey)") {
+                let usable = (0..<sheet.frames.count).filter { !(Self.skipProps[sceneKey] ?? []).contains($0) }
+                let n = SKSpriteNode(texture: sheet.frames[usable.randomElement() ?? 0])
                 n.anchorPoint = sheet.anchor
                 n.setScale(PixelArt.scale * CGFloat.random(in: 0.55...0.75))
                 n.color = NSColor(hex: 0x2A2040)
@@ -271,11 +290,13 @@ final class StripScene: SKScene {
             if let a = monsters[m.id] {
                 actor = a
             } else {
-                let key = "mon_" + (m.isBoss ? region.bossKey : region.monsterKeys[min(m.kind, 2)])
-                actor = MonsterActor(id: m.id, sheet: SpriteSheet.named(key), flyer: m.kind == 1 && !m.isBoss,
-                                     boss: m.isBoss, startX: CGFloat(m.x))
+                let sp = Species.all[safe: m.species]
+                let key = sp?.spriteKey ?? ("mon_" + (m.isBoss ? region.bossKey : region.monsterKeys[min(m.kind, 2)]))
+                actor = MonsterActor(id: m.id, sheet: SpriteSheet.named(key), flyer: sp?.isFlyer ?? (m.kind == 1),
+                                     boss: m.isBoss, startX: CGFloat(m.x), variant: m.variant, guest: sp?.isGuest ?? false)
                 monsters[m.id] = actor
                 actorLayer.addChild(actor.root)
+                announce(actor)
             }
             if m.lastAttackAt > actor.seenAttack {
                 actor.seenAttack = m.lastAttackAt
@@ -299,6 +320,25 @@ final class StripScene: SKScene {
             victoryUntil = clock + 0.9
         }
         lastMonsterCount = b.monsters.count
+    }
+
+    /// Rare spawns get called out so a glance at the strip catches them.
+    private func announce(_ actor: MonsterActor) {
+        let text: String
+        let color: NSColor
+        if actor.guest { text = "희귀 손님!"; color = NSColor(hex: 0x9CF4FF) }
+        else if actor.variant == .shiny { text = "반짝이!"; color = FX.gold }
+        else if actor.variant == .crowned { text = "왕관 몬스터!"; color = NSColor(hex: 0xFF8A6A) }
+        else { return }
+        let at = CGPoint(x: Self.viewport.width - 80, y: 78)
+        // Queue callouts so simultaneous rare spawns read one at a time.
+        let start = max(realClock + 0.4, nextAnnounceAt)
+        nextAnnounceAt = start + 1.1
+        after(start - realClock) { [weak self] in
+            guard let self else { return }
+            FX.label(self.textLayer, text, at: at, color: color, size: 14, rise: 6, life: 1.6)
+            FX.flash(self.fxLayer, at: actor.centerPoint, color: color, size: 60, duration: 0.4)
+        }
     }
 
     private func killMonster(_ actor: MonsterActor) {
@@ -432,9 +472,35 @@ final class StripScene: SKScene {
         run(.sequence([.wait(forDuration: delay), .run(block)]))
     }
 
+    /// Desk theme after moving: multiply-tint the scenery (not the characters).
+    private func applyTheme(_ theme: Int) {
+        seenTheme = theme
+        themeNode?.removeFromParent()
+        let tint = DeskTheme.tints[theme % DeskTheme.tints.count]
+        guard tint != 0xFFFFFF else { themeNode = nil; return }
+        let n = SKSpriteNode(color: NSColor(hex: tint), size: Self.viewport.size)
+        n.anchorPoint = .zero
+        n.blendMode = .multiply
+        n.zPosition = 25   // above props (20), below actors (30)
+        world.addChild(n)
+        themeNode = n
+    }
+
     // MARK: Celebrations & affection
 
+    private var seenDex = -1
+    private var themeNode: SKSpriteNode?
+    private var seenTheme = -1
+
     private func celebrations(_ store: GameStore) {
+        if seenDex < 0 { seenDex = store.dexDiscoveries }
+        if store.dexDiscoveries != seenDex {
+            seenDex = store.dexDiscoveries
+            let at = CGPoint(x: 330, y: 74)
+            FX.label(textLayer, "도감 NEW! \(store.lastDexName)", at: at, color: NSColor(hex: 0x9CF4FF), size: 13, rise: 6, life: 1.8)
+            FX.burst(fxLayer, at: at, color: NSColor(hex: 0x9CF4FF), count: 16, speed: 60, life: 0.8, size: 0.1)
+        }
+        if store.progress.theme != seenTheme { applyTheme(store.progress.theme) }
         if store.legendaryDrops != seenLegendary {
             seenLegendary = store.legendaryDrops
             FX.legendary(fxLayer, at: CGPoint(x: 300, y: Self.groundY))
@@ -481,12 +547,25 @@ enum FlashShader {
         let s = SKShader(source: """
         void main() {
             vec4 c = texture2D(u_texture, v_tex_coord);
-            gl_FragColor = vec4(mix(c.rgb, a_fc * c.a, a_flash), c.a) * v_color_mix.a;
+            vec3 rgb = c.rgb;
+            if (a_hue != 0.0) {
+                float ca = cos(a_hue), sa = sin(a_hue);
+                vec3 r0 = vec3(0.299 + 0.701 * ca + 0.168 * sa, 0.587 - 0.587 * ca + 0.330 * sa, 0.114 - 0.114 * ca - 0.497 * sa);
+                vec3 r1 = vec3(0.299 - 0.299 * ca - 0.328 * sa, 0.587 + 0.413 * ca + 0.035 * sa, 0.114 - 0.114 * ca + 0.292 * sa);
+                vec3 r2 = vec3(0.299 - 0.300 * ca + 1.250 * sa, 0.587 - 0.588 * ca - 1.050 * sa, 0.114 + 0.886 * ca - 0.203 * sa);
+                rgb = clamp(vec3(dot(r0, rgb), dot(r1, rgb), dot(r2, rgb)) * 1.12, 0.0, c.a);
+            }
+            gl_FragColor = vec4(mix(rgb, a_fc * c.a, a_flash), c.a) * v_color_mix.a;
         }
         """)
-        s.attributes = [SKAttribute(name: "a_flash", type: .float), SKAttribute(name: "a_fc", type: .vectorFloat3)]
+        s.attributes = [SKAttribute(name: "a_flash", type: .float), SKAttribute(name: "a_fc", type: .vectorFloat3),
+                        SKAttribute(name: "a_hue", type: .float)]
         return s
     }()
+
+    static func setHue(_ node: SKSpriteNode, _ radians: Float) {
+        node.setValue(SKAttributeValue(float: radians), forAttribute: "a_hue")
+    }
 
     static func set(_ node: SKSpriteNode, amount: Float, color: NSColor) {
         let c = color.usingColorSpace(.sRGB) ?? color
@@ -555,6 +634,7 @@ final class HeroActor {
         sprite.setScale(PixelArt.scale)
         sprite.shader = FlashShader.shader
         FlashShader.set(sprite, amount: 0, color: .white)
+        FlashShader.setHue(sprite, 0)
         root.addChild(sprite)
         hat.anchorPoint = SpriteSheet.named("accessories")?.anchor ?? CGPoint(x: 0.5, y: 0)
         sprite.addChild(hat)
@@ -572,7 +652,32 @@ final class HeroActor {
 
     func resetTrackers() { seenAttack = -10; seenSkill = -10; seenHit = -10 }
 
+    private var legendGlow: SKEmitterNode?
+
     func apply(hero: HeroProgress) {
+        let legendary = hero.weapon?.rarity == .legendary
+        if legendary && legendGlow == nil {
+            let e = SKEmitterNode()
+            e.particleTexture = FX.softDot
+            e.particleBirthRate = 14
+            e.particleLifetime = 0.6
+            e.particleSpeed = 14
+            e.emissionAngle = .pi / 2
+            e.emissionAngleRange = 1
+            e.particleScale = 0.08
+            e.particleScaleSpeed = -0.1
+            e.particleAlphaSpeed = -1.6
+            e.particlePositionRange = CGVector(dx: 8, dy: 8)
+            e.particleColor = FX.gold
+            e.particleColorBlendFactor = 1
+            e.particleBlendMode = .add
+            e.position = CGPoint(x: 12, y: CGFloat(heightPx) * PixelArt.scale * 0.5)
+            root.addChild(e)
+            legendGlow = e
+        } else if !legendary, let g = legendGlow {
+            g.removeFromParent()
+            legendGlow = nil
+        }
         if nameLabel.text != hero.displayName { nameLabel.text = hero.displayName }
         let a = hero.accessory ?? 0
         if a > 0, let hats = SpriteSheet.named("accessories"), hats.frames.indices.contains(a - 1) {
@@ -709,11 +814,17 @@ final class MonsterActor {
     private var lastClock = 0.0
     private var standOff: CGFloat = 0
 
-    init(id: UUID, sheet: SpriteSheet?, flyer: Bool, boss: Bool, startX: CGFloat) {
+    let variant: MonsterVariant
+    let guest: Bool
+
+    init(id: UUID, sheet: SpriteSheet?, flyer: Bool, boss: Bool, startX: CGFloat,
+         variant: MonsterVariant = .normal, guest: Bool = false) {
         self.id = id
         self.sheet = sheet
         self.flyer = flyer
         self.boss = boss
+        self.variant = variant
+        self.guest = guest
         self.x = startX + 40
         heightPx = sheet?.height("move") ?? 24
         let halfWidth = CGFloat(sheet?.meta.cellW ?? 30) * PixelArt.scale / 2
@@ -726,8 +837,39 @@ final class MonsterActor {
         sprite.setScale(PixelArt.scale)
         sprite.shader = FlashShader.shader
         FlashShader.set(sprite, amount: 0, color: .white)
+        FlashShader.setHue(sprite, variant == .shiny ? 2.6 : 0)
         root.addChild(sprite)
         root.addChild(bar.node)
+        if variant == .crowned {
+            sprite.setScale(PixelArt.scale * 1.2)
+            heightPx = Int(Double(heightPx) * 1.2)
+            if let hats = SpriteSheet.named("accessories"), hats.frames.count > 1 {
+                let crown = SKSpriteNode(texture: hats.frames[1])
+                crown.anchorPoint = hats.anchor
+                crown.position = CGPoint(x: 0, y: CGFloat(sheet?.height("move") ?? 20) - 3)
+                sprite.addChild(crown)
+            }
+            let aura = FX.glow(NSColor(hex: 0xFF5A3A), size: CGFloat(heightPx) * 2.4, alpha: 0.35)
+            aura.position = CGPoint(x: 0, y: CGFloat(heightPx) * 0.7)
+            aura.zPosition = -1
+            aura.run(.repeatForever(.sequence([.fadeAlpha(to: 0.15, duration: 0.6), .fadeAlpha(to: 0.4, duration: 0.6)])))
+            root.addChild(aura)
+        }
+        if variant == .shiny || guest {
+            let e = SKEmitterNode()
+            e.particleTexture = FX.flare
+            e.particleBirthRate = 6
+            e.particleLifetime = 0.7
+            e.particleSize = CGSize(width: 12, height: 12)
+            e.particleScaleSpeed = -1
+            e.particleAlphaSpeed = -1.3
+            e.particlePositionRange = CGVector(dx: 30, dy: CGFloat(heightPx) * 1.3)
+            e.position = CGPoint(x: 0, y: CGFloat(heightPx) * 0.75 + (flyer ? 20 : 0))
+            e.particleColor = guest ? NSColor(hex: 0x9CF4FF) : FX.gold
+            e.particleColorBlendFactor = 1
+            e.particleBlendMode = .add
+            root.addChild(e)
+        }
         root.alpha = 0
         root.run(.fadeIn(withDuration: 0.3))
     }

@@ -4,6 +4,8 @@ import SwiftUI
 struct HQView: View {
     @Environment(GameStore.self) private var store
     @State private var selectedID: UUID?
+    @State private var tab = 0
+    var initialTab: Int? = nil
 
     var body: some View {
         let p = store.progress
@@ -12,17 +14,26 @@ struct HQView: View {
             if let report = store.lastOffline {
                 offlineBanner(report)
             }
-            HStack(alignment: .top, spacing: 12) {
-                ForEach(Array(p.heroes.enumerated()), id: \.offset) { i, hero in
-                    HeroCard(index: i, hero: hero, hp: store.battle.heroes[safe: i]?.hp ?? hero.maxHP)
+            SegmentRow(options: [0, 1, 2, 3], selected: initialTab ?? tab,
+                       label: { ["원정대", "도감 \(p.dex.count)/\(Species.slotCount)", "일지 \(p.journal.count)장", "기록"][$0] },
+                       onSelect: { tab = $0 })
+            switch initialTab ?? tab {
+            case 1: DexView()
+            case 2: JournalView()
+            case 3: RecordsView()
+            default:
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(Array(p.heroes.enumerated()), id: \.offset) { i, hero in
+                        HeroCard(index: i, hero: hero, hp: store.battle.heroes[safe: i]?.hp ?? hero.maxHP)
+                    }
                 }
+                bag(p)
             }
-            bag(p)
         }
         .padding(.horizontal, 20)
         .padding(.top, 34)
         .padding(.bottom, 18)
-        .frame(width: 920, height: 600, alignment: .top)
+        .frame(width: 920, height: 660, alignment: .top)
         .background(Theme.bg)
         .foregroundStyle(Theme.text)
     }
@@ -31,7 +42,7 @@ struct HQView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 Text("원정 본부").font(.system(size: 22, weight: .heavy, design: .rounded))
-                Text(p.isBossWave ? "\(p.region.name) · 보스전" : "\(p.region.name) · 웨이브 \(p.wave)/\(Region.wavesPerRegion)")
+                Text(p.isBossWave ? "\(p.region.name) · \(p.isEndless ? "\(p.wave)층 " : "")보스전" : "\(p.region.name) · \(p.stageText)")
                     .font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
                 Spacer()
                 Label("\(p.totalKills.formatted())", systemImage: "flame.fill")
@@ -40,7 +51,7 @@ struct HQView: View {
                     .font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(Theme.gold)
             }
             SegmentRow(options: Array(Region.all.indices), selected: p.regionIndex,
-                       label: { i in i <= p.unlockedRegion ? "\(i + 1). \(Region.all[i].name)" : "🔒 \(i + 1)" },
+                       label: { i in i <= p.unlockedRegion ? (Region.all[i].endless ? "∞ \(Region.all[i].name)" : "\(i + 1). \(Region.all[i].name)") : "🔒 \(Region.all[i].endless ? "∞" : "\(i + 1)")" },
                        enabled: { $0 <= p.unlockedRegion },
                        onSelect: { store.selectRegion($0) })
         }
@@ -49,7 +60,7 @@ struct HQView: View {
     private func offlineBanner(_ r: OfflineReport) -> some View {
         HStack(spacing: 10) {
             Image(systemName: "moon.zzz.fill").foregroundStyle(Theme.gold)
-            Text("자리를 비운 \(r.durationText) 동안: \(r.kills.formatted())마리 처치 · 골드 +\(r.gold.formatted()) · 전리품 \(r.items)개\(r.bosses > 0 ? " · 보스 \(r.bosses)회" : "")\(r.autoSold > 0 ? " · 자동 판매 \(r.autoSold)개" : "")")
+            Text("자리를 비운 \(r.durationText) 동안: \(r.kills.formatted())마리 처치 · 골드 +\(r.gold.formatted()) · 전리품 \(r.items)개\(r.bosses > 0 ? " · 보스 \(r.bosses)회" : "")\(r.newDex > 0 ? " · 새 도감 \(r.newDex)" : "")\(r.pages > 0 ? " · 일지 \(r.pages)장" : "")\(r.autoSold > 0 ? " · 자동 판매 \(r.autoSold)개" : "")")
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
             Spacer()
             Button("확인") { store.lastOffline = nil }.buttonStyle(GameButtonStyle(compact: true))
@@ -146,7 +157,7 @@ private struct HeroCard: View {
                 HStack {
                     Text("공격력").foregroundStyle(Theme.dim)
                     Spacer()
-                    Text("\(Int(hero.attack))")
+                    Text(store.progress.memories > 0 ? "\(Int(hero.attack * Move.bonus(store.progress))) (추억 +\(store.progress.memories * 5)%)" : "\(Int(hero.attack))")
                 }
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
             }
@@ -234,9 +245,6 @@ private struct ItemDetail: View {
     }
 }
 
-extension Array {
-    subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
-}
 
 /// True while rendering with ImageRenderer (AppKit-backed controls can't be drawn there).
 private struct StaticRenderingKey: EnvironmentKey { static let defaultValue = false }

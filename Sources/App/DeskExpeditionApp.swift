@@ -34,7 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         if let i = args.firstIndex(of: "--frames"), args.indices.contains(i + 1) {
-            Snapshot.dumpFrames(to: URL(fileURLWithPath: args[i + 1]))
+            Snapshot.dumpFrames(to: URL(fileURLWithPath: args[i + 1]), showcase: args.contains("--showcase"))
             NSApp.terminate(nil)
             return
         }

@@ -71,7 +71,7 @@ struct StripHUD: View {
         }
 
         let p = progress
-        let waveText = p.isBossWave ? "보스전!" : "웨이브 \(p.wave)/\(Region.wavesPerRegion)"
+        let waveText = p.isBossWave ? (p.isEndless ? "\(p.wave)층 보스!" : "보스전!") : p.stageText
         ctx.draw(Text(p.region.name).font(.system(size: 13, weight: .heavy, design: .rounded)).foregroundColor(.white),
                  at: CGPoint(x: x0, y: 22), anchor: .leading)
         ctx.draw(Text(waveText).font(.system(size: 11, weight: .bold, design: .rounded))
@@ -82,8 +82,8 @@ struct StripHUD: View {
         for w in 1...Region.wavesPerRegion {
             let rect = CGRect(x: x0 + CGFloat(w - 1) * (pipW + 4), y: 36, width: pipW, height: 5)
             let boss = w == Region.wavesPerRegion
-            let color: Color = w < p.wave ? Color(hex: 0x6BE36F)
-                : w == p.wave ? Color(hex: 0xFFD45A)
+            let color: Color = w < p.pipWave ? Color(hex: 0x6BE36F)
+                : w == p.pipWave ? Color(hex: 0xFFD45A)
                 : boss ? Color(hex: 0xFF7A7A, opacity: 0.4) : .white.opacity(0.15)
             ctx.fill(Path(roundedRect: rect, cornerRadius: 2.5), with: .color(color))
         }
@@ -95,7 +95,7 @@ struct StripHUD: View {
             .foregroundColor(bagColor), at: CGPoint(x: x0 + 124, y: 66), anchor: .leading)
         ctx.draw(Text("⚔️ \(p.totalKills.formatted())").font(.system(size: 11, weight: .semibold, design: .rounded))
             .foregroundColor(.white.opacity(0.6)), at: CGPoint(x: size.width - 12, y: 66), anchor: .trailing)
-        let names = p.heroes.map(\.displayName).joined(separator: " · ")
+        let names = p.heroes.map(\.displayName).joined(separator: " · ") + "   📖 \(p.journal.count) · 도감 \(p.dex.count)/\(Species.slotCount)"
         ctx.draw(Text(names).font(.system(size: 10, weight: .semibold, design: .rounded))
             .foregroundColor(.white.opacity(0.45)), at: CGPoint(x: x0, y: 86), anchor: .leading)
     }

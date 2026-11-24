@@ -80,8 +80,23 @@ enum Snapshot {
     }
 
     /// `--frames <dir>`: dumps 0.1 s strip frames for eyeballing animation.
-    static func dumpFrames(to dir: URL, seconds: Double = 12) {
+    static func dumpFrames(to dir: URL, seconds: Double = 12, showcase: Bool = false) {
         let store = demoStore()
+        if showcase {   // force one of each rare kind into the next wave
+            for _ in 0..<40 { store.step(dt: 0.1) }
+            var b = store.battle
+            let r = store.progress.regionIndex
+            let picks: [(Int, MonsterVariant)] = [(0, .shiny), (2, .crowned), (4, .normal), (1, .normal)]
+            for (i, pick) in picks.enumerated() where i < b.monsters.count || i < 4 {
+                let sp = Species.of(region: r, kind: pick.0)
+                var m = Monster(kind: min(sp.kind, 2), name: sp.name, maxHP: 9e9, hp: 9e9, atk: 1,
+                                x: Engine.spawnX + Engine.slotSpacing * Double(i), isBoss: false, attackTimer: 2)
+                m.species = sp.id
+                m.variant = pick.1
+                if i < b.monsters.count { b.monsters[i] = m } else { b.monsters.append(m) }
+            }
+            store.battle = b
+        }
         guard let off = StripOffscreen(store: store) else { return }
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         var out = dir

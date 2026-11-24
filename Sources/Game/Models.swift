@@ -126,6 +126,8 @@ struct Item: Codable, Identifiable, Hashable {
     /// weapon: +ATK, armor: +HP
     var power: Int
     var regionIndex: Int
+    /// Index into `Unique.names` for named legendaries.
+    var unique: Int?
 
     var statText: String { slot == .weapon ? "공격 +\(power)" : "체력 +\(power)" }
 
@@ -177,6 +179,8 @@ struct Region {
     let monsterKeys: [String]
     let bossKey: String
     let groundColor: UInt32
+    /// 서랍 심층: endless floors, monsters drawn from every region, a boss every 10 floors.
+    var endless = false
 
     static let wavesPerRegion = 10
 
@@ -201,18 +205,28 @@ struct Region {
                monsterNames: ["먼지 토끼", "커서 유령", "키캡 골렘"], bossName: "무선 마우스 용",
                scene: "monitor", monsterKeys: ["dust_bunny", "cursor_ghost", "keycap_golem"], bossKey: "mouse_dragon",
                groundColor: 0x2E3550),
+        Region(name: "서랍 심층", adjective: "서랍",
+               monsterNames: ["심층 슬라임", "심층 비행체", "심층 골렘"], bossName: "심층의 메아리",
+               scene: "drawer", monsterKeys: ["eraser_slime", "paper_crane", "eraser_golem"], bossKey: "stapler_king",
+               groundColor: 0x3A2E28, endless: true),
     ]
 
+    static let endlessIndex = 5
+    static let storyRegions = 5
+
     static func monsterHP(region: Int, wave: Int) -> Double {
-        28 * pow(2.6, Double(region)) * (1 + 0.12 * Double(wave - 1))
+        if region >= endlessIndex { return 28 * pow(2.6, 4) * 2.2 * pow(1.075, Double(wave - 1)) }
+        return 28 * pow(2.6, Double(region)) * (1 + 0.12 * Double(wave - 1))
     }
 
     static func monsterATK(region: Int, wave: Int) -> Double {
-        4 * pow(2.4, Double(region)) * (1 + 0.1 * Double(wave - 1))
+        if region >= endlessIndex { return 4 * pow(2.4, 4) * 2.0 * pow(1.06, Double(wave - 1)) }
+        return 4 * pow(2.4, Double(region)) * (1 + 0.1 * Double(wave - 1))
     }
 
     static func gold(region: Int, wave: Int) -> Double {
-        2 * pow(2.2, Double(region)) * (1 + 0.05 * Double(wave - 1))
+        if region >= endlessIndex { return 2 * pow(2.2, 4) * 1.8 * pow(1.05, Double(wave - 1)) }
+        return 2 * pow(2.2, Double(region)) * (1 + 0.05 * Double(wave - 1))
     }
 
     static func gearBase(region: Int, slot: GearSlot) -> Double {
@@ -230,15 +244,63 @@ struct Progress: Codable, Equatable {
     var bag: [Item] = []
     var regionIndex: Int = 0
     var unlockedRegion: Int = 0
+    /// Wave 1–10 in story regions; the floor number in 서랍 심층.
     var wave: Int = 1
     var totalKills: Int = 0
     var bossKills: Int = 0
     var bagFullNotified: Bool = false
     var lastActive: Date = Date()
 
+    // Long-term collection (kept across moves).
+    var dex: [String: DexEntry] = [:]
+    var journal: [JournalPage] = []
+    var trophies: Set<Int> = []
+    var uniquesFound: Set<Int> = []
+    var bestFloor: Int = 0
+    var memories: Int = 0
+    var moves: Int = 0
+    var wipes: Int = 0
+    // Current run only.
+    var runBestFloor: Int = 0
+
     var region: Region { Region.all[regionIndex] }
-    var isBossWave: Bool { wave >= Region.wavesPerRegion }
+    var isEndless: Bool { region.endless }
+    var isBossWave: Bool { isEndless ? wave % Region.wavesPerRegion == 0 : wave >= Region.wavesPerRegion }
     var bagIsFull: Bool { bag.count >= Progress.bagCapacity }
+    /// "웨이브 3/10" or "심층 27층".
+    var stageText: String { isEndless ? "심층 \(wave)층" : "웨이브 \(wave)/\(Region.wavesPerRegion)" }
+    /// Wave pips position (1…10) — in 서랍 심층 the distance to the next boss floor.
+    var pipWave: Int { isEndless ? (wave - 1) % Region.wavesPerRegion + 1 : wave }
+    var theme: Int { moves % DeskTheme.names.count }
+
+    init() {}
+
+    // Every key is optional so saves from older versions keep loading.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = Progress()
+        heroes = try c.decodeIfPresent([HeroProgress].self, forKey: .heroes) ?? d.heroes
+        gold = try c.decodeIfPresent(Int.self, forKey: .gold) ?? 0
+        bag = try c.decodeIfPresent([Item].self, forKey: .bag) ?? []
+        regionIndex = try c.decodeIfPresent(Int.self, forKey: .regionIndex) ?? 0
+        unlockedRegion = try c.decodeIfPresent(Int.self, forKey: .unlockedRegion) ?? 0
+        wave = try c.decodeIfPresent(Int.self, forKey: .wave) ?? 1
+        totalKills = try c.decodeIfPresent(Int.self, forKey: .totalKills) ?? 0
+        bossKills = try c.decodeIfPresent(Int.self, forKey: .bossKills) ?? 0
+        bagFullNotified = try c.decodeIfPresent(Bool.self, forKey: .bagFullNotified) ?? false
+        lastActive = try c.decodeIfPresent(Date.self, forKey: .lastActive) ?? Date()
+        dex = try c.decodeIfPresent([String: DexEntry].self, forKey: .dex) ?? [:]
+        journal = try c.decodeIfPresent([JournalPage].self, forKey: .journal) ?? []
+        trophies = try c.decodeIfPresent(Set<Int>.self, forKey: .trophies) ?? []
+        uniquesFound = try c.decodeIfPresent(Set<Int>.self, forKey: .uniquesFound) ?? []
+        bestFloor = try c.decodeIfPresent(Int.self, forKey: .bestFloor) ?? 0
+        memories = try c.decodeIfPresent(Int.self, forKey: .memories) ?? 0
+        moves = try c.decodeIfPresent(Int.self, forKey: .moves) ?? 0
+        wipes = try c.decodeIfPresent(Int.self, forKey: .wipes) ?? 0
+        runBestFloor = try c.decodeIfPresent(Int.self, forKey: .runBestFloor) ?? 0
+        regionIndex = min(max(0, regionIndex), Region.all.count - 1)
+        unlockedRegion = min(max(0, unlockedRegion), Region.all.count - 1)
+    }
 }
 
 // MARK: - Cosmetics

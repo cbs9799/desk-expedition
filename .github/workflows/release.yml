@@ -31,7 +31,30 @@ jobs:
           xcodebuild -project DeskExpedition.xcodeproj -scheme DeskExpedition \
             -derivedDataPath build/test test | tail -5
 
-      - name: 패키징
+      - name: 서명 인증서·공증 키 준비 (시크릿이 있을 때만)
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+        run: |
+          if [ -z "$MACOS_CERT_P12" ]; then echo "시크릿 없음 → ad-hoc 서명"; exit 0; fi
+          KC="$RUNNER_TEMP/signing.keychain-db"; KCPW="$(uuidgen)"
+          security create-keychain -p "$KCPW" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KCPW" "$KC"
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KCPW" "$KC"
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          echo "$NOTARY_KEY_P8" > "$RUNNER_TEMP/notary.p8"
+          echo "NOTARY_KEY=$RUNNER_TEMP/notary.p8" >> "$GITHUB_ENV"
+
+      - name: 패키징 (시크릿이 있으면 Developer ID 서명 + 공증)
+        env:
+          DEVELOPER_ID: ${{ secrets.DEVELOPER_ID }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER }}
         run: scripts/package.sh "${GITHUB_REF_NAME}"
 
       - name: 릴리스에 업로드

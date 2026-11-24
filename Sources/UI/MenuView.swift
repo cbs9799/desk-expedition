@@ -19,14 +19,14 @@ struct MenuView: View {
                 HStack {
                     Text(p.region.name).font(.system(size: 12, weight: .bold, design: .rounded))
                     Spacer()
-                    Text(p.isBossWave ? "보스전!" : "웨이브 \(p.wave)/\(Region.wavesPerRegion)")
+                    Text(p.isBossWave ? "보스전!" : p.stageText)
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundStyle(p.isBossWave ? Color(hex: 0xFF7A7A) : Theme.dim)
                 }
-                Bar(fraction: Double(p.wave - 1) / Double(Region.wavesPerRegion - 1), color: Theme.gold, height: 5)
+                Bar(fraction: Double(p.pipWave - 1) / Double(Region.wavesPerRegion - 1), color: Theme.gold, height: 5)
                 ForEach(Array(p.heroes.enumerated()), id: \.offset) { i, hero in
                     HStack(spacing: 8) {
-                        Text("\(hero.heroClass.name) Lv.\(hero.level)")
+                        Text("\(hero.displayName) Lv.\(hero.level)")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .frame(width: 84, alignment: .leading)
                         Bar(fraction: (store.battle.heroes[safe: i]?.hp ?? hero.maxHP) / hero.maxHP)

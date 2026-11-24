@@ -25,6 +25,11 @@ struct Monster: Identifiable {
     var attackTimer: Double
     var lastAttackAt: Double = -10
     var lastHitAt: Double = -10
+    /// Index into `Species.all` (drives sprite + dex entry).
+    var species: Int = 0
+    var variant: MonsterVariant = .normal
+
+    var isGuest: Bool { Species.all[safe: species]?.isGuest ?? false }
 }
 
 struct Effect {
@@ -79,6 +84,9 @@ struct TickReport {
     var regionUnlocked: Int?
     var wipes = 0
     var bagBecameFull = false
+    var newDex: [String] = []
+    var journalPages: [String] = []
+    var trophies: [Int] = []
 
     mutating func merge(_ other: TickReport) {
         kills += other.kills
@@ -89,6 +97,9 @@ struct TickReport {
         if let r = other.regionUnlocked { regionUnlocked = r }
         wipes += other.wipes
         bagBecameFull = bagBecameFull || other.bagBecameFull
+        newDex += other.newDex
+        journalPages += other.journalPages
+        trophies += other.trophies
     }
 }
 
@@ -99,6 +110,8 @@ struct OfflineReport: Equatable {
     var items: Int
     var autoSold: Int
     var bosses: Int
+    var newDex: Int = 0
+    var pages: Int = 0
 
     var durationText: String {
         let total = Int(seconds)
@@ -168,26 +181,47 @@ enum Engine {
 
     static func spawnWave<R: RandomNumberGenerator>(_ p: Progress, _ b: inout Battle, rng: inout R) {
         let r = p.regionIndex, w = p.wave
-        let region = p.region
         var list: [Monster] = []
         let hp = Region.monsterHP(region: r, wave: w)
         let atk = Region.monsterATK(region: r, wave: w)
+        // Story regions use their own species; 서랍 심층 draws from every region.
+        func speciesRegion() -> Int { p.isEndless ? Int.random(in: 0..<Region.storyRegions, using: &rng) : r }
+        func roll() -> MonsterVariant {
+            let x = Double.random(in: 0..<1, using: &rng)
+            return x < MonsterVariant.shinyChance ? .shiny : x < MonsterVariant.shinyChance + MonsterVariant.crownedChance ? .crowned : .normal
+        }
+        func make(_ sp: Species, variant: MonsterVariant, hpMul: Double, atkMul: Double, x: Double, timer: Double) -> Monster {
+            let mhp = hp * hpMul * (variant == .crowned ? 3 : 1)
+            var m = Monster(kind: min(sp.kind, 2), name: variant == .normal ? sp.name : "\(variant.label) \(sp.name)",
+                            maxHP: mhp, hp: mhp, atk: atk * atkMul * (variant == .crowned ? 1.5 : 1), x: x,
+                            isBoss: sp.isBoss, attackTimer: timer)
+            m.species = sp.id
+            m.variant = variant
+            return m
+        }
+
         if p.isBossWave {
-            list.append(Monster(kind: 2, name: region.bossName, maxHP: hp * 10, hp: hp * 10, atk: atk * 2.2,
-                                x: spawnX, isBoss: true, attackTimer: 1.8))
+            let boss = Species.of(region: speciesRegion(), kind: 3)
+            let v: MonsterVariant = Double.random(in: 0..<1, using: &rng) < MonsterVariant.bossShinyChance ? .shiny : .normal
+            var m = make(boss, variant: v, hpMul: 10, atkMul: 2.2, x: spawnX, timer: 1.8)
+            if p.isEndless { m.name = "\(boss.name)의 메아리" }
+            list.append(m)
             for i in 0..<2 {
-                let k = Int.random(in: 0..<2, using: &rng)
-                list.append(Monster(kind: k, name: region.monsterNames[k], maxHP: hp, hp: hp, atk: atk,
-                                    x: spawnX + slotSpacing * Double(i + 1) + 20, isBoss: false, attackTimer: 1.5))
+                let sp = Species.of(region: speciesRegion(), kind: Int.random(in: 0..<2, using: &rng))
+                list.append(make(sp, variant: roll(), hpMul: 1, atkMul: 1, x: spawnX + slotSpacing * Double(i + 1) + 20, timer: 1.5))
             }
         } else {
             let count = Int.random(in: 2...4, using: &rng)
             for i in 0..<count {
                 let k = Int.random(in: 0..<3, using: &rng)
-                let mhp = hp * (k == 2 ? 1.4 : 1.0)
-                list.append(Monster(kind: k, name: region.monsterNames[k], maxHP: mhp, hp: mhp, atk: atk,
-                                    x: spawnX + slotSpacing * Double(i), isBoss: false,
-                                    attackTimer: Double.random(in: 0.8...1.6, using: &rng)))
+                let sp = Species.of(region: speciesRegion(), kind: k)
+                list.append(make(sp, variant: roll(), hpMul: k == 2 ? 1.4 : 1, atkMul: 1,
+                                 x: spawnX + slotSpacing * Double(i), timer: Double.random(in: 0.8...1.6, using: &rng)))
+            }
+            if Double.random(in: 0..<1, using: &rng) < MonsterVariant.guestChancePerWave {
+                let guest = Species.of(region: speciesRegion(), kind: 4)
+                list.append(make(guest, variant: .normal, hpMul: 2, atkMul: 0.5,
+                                 x: spawnX + slotSpacing * Double(count), timer: 2.0))
             }
         }
         b.monsters = list
@@ -210,7 +244,7 @@ enum Engine {
             let inRange = b.monsters.indices.filter { b.monsters[$0].x <= attackRange && b.monsters[$0].hp > 0 }
             guard let front = inRange.first else { continue }
             let cls = p.heroes[hi].heroClass
-            let atk = p.heroes[hi].attack
+            let atk = p.heroes[hi].attack * Move.bonus(p)
             let engaged = b.monsters[front].x <= frontSlotX + 2
             if cls == .warrior && !engaged { continue }
 
@@ -277,6 +311,8 @@ enum Engine {
         // 5. Party wiped → retreat a few waves.
         if !b.heroes.contains(where: { $0.alive }) {
             report.wipes += 1
+            p.wipes += 1
+            Journal.unlock("first_wipe", in: &p, report: &report)
             p.wave = max(1, p.wave - 3)
             b.monsters.removeAll()
             b.phase = .retreating(until: b.time + 3)
@@ -286,13 +322,27 @@ enum Engine {
 
         // 6. Wave cleared.
         if b.monsters.isEmpty {
-            if p.isBossWave {
+            if p.isEndless {
+                if p.isBossWave {
+                    p.bossKills += 1
+                    report.bossesDefeated.append("심층 \(p.wave)층 보스")
+                }
+                p.bestFloor = max(p.bestFloor, p.wave)
+                p.runBestFloor = max(p.runBestFloor, p.wave)
+                for f in [10, 20, 30, 50, 100] where p.wave >= f { Journal.unlock("floor\(f)", in: &p, report: &report) }
+                if p.wave >= 30, !p.trophies.contains(5) { p.trophies.insert(5); report.trophies.append(5) }
+                p.wave += 1
+            } else if p.isBossWave {
                 p.bossKills += 1
                 report.bossesDefeated.append(p.region.bossName)
+                let r = p.regionIndex
+                if !p.trophies.contains(r) { p.trophies.insert(r); report.trophies.append(r) }
+                Journal.unlock("boss\(r)", in: &p, report: &report)
                 if p.regionIndex == p.unlockedRegion && p.unlockedRegion < Region.all.count - 1 {
                     p.unlockedRegion += 1
                     p.regionIndex = p.unlockedRegion
                     report.regionUnlocked = p.unlockedRegion
+                    Journal.unlock("region\(p.unlockedRegion)", in: &p, report: &report)
                 }
                 p.wave = 1
             } else {
@@ -322,13 +372,23 @@ enum Engine {
     static func reward<R: RandomNumberGenerator>(for m: Monster, _ p: inout Progress, rng: inout R, report: inout TickReport) {
         p.totalKills += 1
         report.kills += 1
-        let g = Int((Region.gold(region: p.regionIndex, wave: p.wave) * (m.isBoss ? 12 : 1)).rounded())
+        record(m, &p, report: &report)
+        let variantGold = m.isGuest ? 15.0 : m.variant == .crowned ? 5 : m.variant == .shiny ? 3 : 1
+        let g = Int((Region.gold(region: p.regionIndex, wave: p.wave) * (m.isBoss ? 12 : 1) * variantGold
+                     * Dex.goldBonus(p) * Move.bonus(p)).rounded())
         p.gold += g
         report.goldGained += g
 
-        let dropChance = m.isBoss ? 1.0 : 0.16
+        let dropChance = m.isBoss || m.isGuest ? 1.0 : m.variant == .normal ? 0.16 : 0.6
         guard Double.random(in: 0..<1, using: &rng) < dropChance else { return }
-        let item = makeItem(region: p.regionIndex, boss: m.isBoss, rng: &rng)
+        let item = makeItem(region: p.regionIndex, boss: m.isBoss || m.isGuest, floor: p.isEndless ? p.wave : 0, rng: &rng)
+        if item.rarity == .legendary {
+            Journal.unlock("first_legendary", in: &p, report: &report)
+            if let u = item.unique {
+                p.uniquesFound.insert(u)
+                Journal.unlock("first_unique", in: &p, report: &report)
+            }
+        }
         if p.bag.count < Progress.bagCapacity {
             p.bag.append(item)
             report.drops.append(item)
@@ -344,6 +404,23 @@ enum Engine {
         }
     }
 
+    /// Writes the kill into the 책상 도감 and unlocks the matching journal pages.
+    static func record(_ m: Monster, _ p: inout Progress, report: inout TickReport) {
+        let key = Dex.key(m.species, m.variant)
+        if var e = p.dex[key] {
+            e.count += 1
+            p.dex[key] = e
+            return
+        }
+        p.dex[key] = DexEntry(count: 1, first: Date())
+        let name = Species.all[safe: m.species]?.name ?? m.name
+        report.newDex.append(m.variant == .normal ? name : "\(m.variant.label) \(name)")
+        if m.variant == .shiny { Journal.unlock("first_shiny", in: &p, report: &report) }
+        if m.variant == .crowned { Journal.unlock("first_crowned", in: &p, report: &report) }
+        if m.isGuest { Journal.unlock("first_guest", in: &p, report: &report) }
+        for n in Dex.milestones where p.dex.count >= n { Journal.unlock("dex\(n)", in: &p, report: &report) }
+    }
+
     static func rollRarity<R: RandomNumberGenerator>(boss: Bool, rng: inout R) -> Rarity {
         let roll = Double.random(in: 0..<1, using: &rng)
         if boss {
@@ -355,14 +432,22 @@ enum Engine {
     static let weaponNames = ["바늘 검", "압정 창", "클립 활", "크레용 지팡이", "커터 단검", "자 몽둥이"]
     static let armorNames = ["골무 투구", "병뚜껑 방패", "포스트잇 망토", "지우개 갑옷", "단추 방패", "실타래 로브"]
 
-    static func makeItem<R: RandomNumberGenerator>(region: Int, boss: Bool, rng: inout R) -> Item {
+    static func makeItem<R: RandomNumberGenerator>(region: Int, boss: Bool, floor: Int = 0, rng: inout R) -> Item {
         let slot: GearSlot = Bool.random(using: &rng) ? .weapon : .armor
         let rarity = rollRarity(boss: boss, rng: &rng)
-        let base = Region.gearBase(region: region, slot: slot)
-        let power = max(1, Int((base * rarity.multiplier * Double.random(in: 0.85...1.15, using: &rng)).rounded()))
+        let base = Region.gearBase(region: min(region, Region.storyRegions), slot: slot) * pow(1.04, Double(floor))
+        var power = max(1, Int((base * rarity.multiplier * Double.random(in: 0.85...1.15, using: &rng)).rounded()))
         let noun = (slot == .weapon ? weaponNames : armorNames).randomElement(using: &rng)!
-        return Item(slot: slot, rarity: rarity, name: "\(Region.all[region].adjective) \(noun)",
-                    power: power, regionIndex: region)
+        var item = Item(slot: slot, rarity: rarity, name: "\(Region.all[region].adjective) \(noun)",
+                        power: power, regionIndex: region)
+        if rarity == .legendary, Double.random(in: 0..<1, using: &rng) < Unique.chance {
+            let u = Int.random(in: 0..<Unique.names.count, using: &rng)
+            power = Int((Double(power) * 1.25).rounded())
+            item.power = power
+            item.unique = u
+            item.name = Unique.names[u]
+        }
+        return item
     }
 
     // MARK: Offline
@@ -379,7 +464,8 @@ enum Engine {
             elapsed += dt
         }
         return OfflineReport(seconds: duration, kills: total.kills, gold: total.goldGained,
-                             items: total.drops.count, autoSold: total.autoSold, bosses: total.bossesDefeated.count)
+                             items: total.drops.count, autoSold: total.autoSold, bosses: total.bossesDefeated.count,
+                             newDex: total.newDex.count, pages: total.journalPages.count)
     }
 }
 
