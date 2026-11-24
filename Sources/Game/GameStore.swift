@@ -33,6 +33,9 @@ final class GameStore {
     }
 
     @ObservationIgnored var onSettingsChanged: (() -> Void)?
+    /// Counters the strip renderer polls to fire one-shot celebrations.
+    @ObservationIgnored private(set) var legendaryDrops = 0
+    @ObservationIgnored private(set) var levelUps = [0, 0, 0]
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var bannerExpiry = Date.distantPast
     @ObservationIgnored private var lastSave = Date()
@@ -99,6 +102,7 @@ final class GameStore {
         } else if let legendary = report.drops.first(where: { $0.rarity == .legendary }) {
             showBanner("전설 전리품! \(legendary.name)", seconds: 6)
         }
+        if report.drops.contains(where: { $0.rarity == .legendary }) { legendaryDrops += 1 }
         if report.bagBecameFull {
             showBanner("가방이 가득 찼어요 — 새 전리품은 절반 값에 자동 판매돼요", seconds: 8)
             notify(title: "가방이 가득 찼어요", body: "원정 본부에서 장비를 정리하세요. 그동안 새 전리품은 절반 값에 자동 판매돼요.")
@@ -119,6 +123,16 @@ final class GameStore {
         progress.gold -= cost
         progress.heroes[heroIndex].level += 1
         adjustHP(heroIndex, oldMax: oldMax)
+        levelUps[heroIndex] += 1
+    }
+
+    func rename(_ heroIndex: Int, to name: String) {
+        let trimmed = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(8))
+        progress.heroes[heroIndex].nickname = trimmed.isEmpty ? nil : trimmed
+    }
+
+    func setAccessory(_ heroIndex: Int, _ accessory: Int) {
+        progress.heroes[heroIndex].accessory = accessory == 0 ? nil : accessory
     }
 
     func equip(_ item: Item, on heroIndex: Int) {

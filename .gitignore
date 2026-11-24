@@ -4,3 +4,6 @@ DerivedData/
 xcuserdata/
 .DS_Store
 dist/
+.venv-art/
+art/raw/
+art/gen.log

@@ -7,6 +7,17 @@ enum HeroClass: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Default nickname until the player renames the hero in HQ.
+    var defaultNickname: String {
+        switch self {
+        case .warrior: return "단추"
+        case .archer: return "클립"
+        case .mage: return "몽당"
+        }
+    }
+
+    var spriteKey: String { "hero_\(rawValue)" }
+
     var name: String {
         switch self {
         case .warrior: return "전사"
@@ -132,8 +143,16 @@ struct HeroProgress: Codable, Identifiable, Equatable {
     var level: Int = 1
     var weapon: Item?
     var armor: Item?
+    /// Player-chosen nickname (nil → class default). Optional so older saves still decode.
+    var nickname: String?
+    /// Index into `Accessory.all` (nil/0 → none).
+    var accessory: Int?
 
     var id: HeroClass { heroClass }
+    var displayName: String {
+        let n = nickname?.trimmingCharacters(in: .whitespaces) ?? ""
+        return n.isEmpty ? heroClass.defaultNickname : n
+    }
 
     var maxHP: Double { heroClass.baseHP * pow(1.1, Double(level - 1)) + Double(armor?.power ?? 0) }
     var attack: Double { heroClass.baseATK * pow(1.1, Double(level - 1)) + Double(weapon?.power ?? 0) }
@@ -153,28 +172,35 @@ struct Region {
     let adjective: String
     let monsterNames: [String]
     let bossName: String
-    let monsterColor: UInt32
-    let monsterDark: UInt32
+    /// Art keys: `bg_<scene>`, `props_<scene>`, `mon_<key>` for [ground, flyer, heavy] and the boss.
+    let scene: String
+    let monsterKeys: [String]
+    let bossKey: String
     let groundColor: UInt32
 
     static let wavesPerRegion = 10
 
     static let all: [Region] = [
-        Region(name: "속삭이는 숲", adjective: "숲의",
-               monsterNames: ["초록 슬라임", "숲 박쥐", "이끼 골렘"], bossName: "거대 버섯왕",
-               monsterColor: 0x5BBF5A, monsterDark: 0x2F7A35, groundColor: 0x3E6B35),
-        Region(name: "모래바람 협곡", adjective: "사막의",
-               monsterNames: ["모래 슬라임", "협곡 독수리", "사암 골렘"], bossName: "모래 전갈 여왕",
-               monsterColor: 0xE0B65A, monsterDark: 0x9C7430, groundColor: 0xA07B45),
-        Region(name: "얼음 동굴", adjective: "서리",
-               monsterNames: ["얼음 슬라임", "눈 박쥐", "서리 골렘"], bossName: "빙하의 거인",
-               monsterColor: 0x8FD8F0, monsterDark: 0x3E8BB0, groundColor: 0x5D8BA6),
-        Region(name: "잿빛 화산", adjective: "불꽃",
-               monsterNames: ["용암 슬라임", "화염 박쥐", "흑요석 골렘"], bossName: "용암 군주",
-               monsterColor: 0xF06A3A, monsterDark: 0x9E2E1B, groundColor: 0x5A3A34),
-        Region(name: "별빛 성채", adjective: "별빛",
-               monsterNames: ["별 슬라임", "유령 박쥐", "성채 수호자"], bossName: "별을 삼킨 기사",
-               monsterColor: 0xB79CF5, monsterDark: 0x6448B0, groundColor: 0x3E3566),
+        Region(name: "공책 들판", adjective: "공책",
+               monsterNames: ["지우개똥 슬라임", "종이학", "지우개 골렘"], bossName: "스테이플러 대왕",
+               scene: "notebook", monsterKeys: ["eraser_slime", "paper_crane", "eraser_golem"], bossKey: "stapler_king",
+               groundColor: 0xD9D2BE),
+        Region(name: "연필꽂이 협곡", adjective: "연필꽂이",
+               monsterNames: ["연필밥 슬라임", "클립 박쥐", "몽당연필 골렘"], bossName: "연필깎이 거인",
+               scene: "pencilcup", monsterKeys: ["shaving_slime", "clip_bat", "stub_golem"], bossKey: "sharpener_giant",
+               groundColor: 0xA0703F),
+        Region(name: "머그컵 늪", adjective: "머그컵",
+               monsterNames: ["커피 방울 슬라임", "티백 유령", "각설탕 골렘"], bossName: "머그컵 문어",
+               scene: "mug", monsterKeys: ["coffee_slime", "teabag_ghost", "sugar_golem"], bossKey: "mug_octopus",
+               groundColor: 0x6B4A33),
+        Region(name: "화분 정글", adjective: "화분",
+               monsterNames: ["이끼 슬라임", "민들레 씨 요정", "선인장 골렘"], bossName: "다육이 왕",
+               scene: "planter", monsterKeys: ["moss_slime", "dandelion_sprite", "cactus_golem"], bossKey: "succulent_king",
+               groundColor: 0x5A4030),
+        Region(name: "모니터 성채", adjective: "모니터",
+               monsterNames: ["먼지 토끼", "커서 유령", "키캡 골렘"], bossName: "무선 마우스 용",
+               scene: "monitor", monsterKeys: ["dust_bunny", "cursor_ghost", "keycap_golem"], bossKey: "mouse_dragon",
+               groundColor: 0x2E3550),
     ]
 
     static func monsterHP(region: Int, wave: Int) -> Double {
@@ -213,4 +239,11 @@ struct Progress: Codable, Equatable {
     var region: Region { Region.all[regionIndex] }
     var isBossWave: Bool { wave >= Region.wavesPerRegion }
     var bagIsFull: Bool { bag.count >= Progress.bagCapacity }
+}
+
+// MARK: - Cosmetics
+
+enum Accessory {
+    /// Index 0 is "none"; 1… map to frames of the `accessories` sheet.
+    static let all = ["없음", "리본", "왕관", "꽃", "고깔", "새싹", "별"]
 }

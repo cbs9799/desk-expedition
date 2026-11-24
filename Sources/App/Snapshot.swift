@@ -14,9 +14,11 @@ enum Snapshot {
         p.heroes[0].level = 14
         p.heroes[1].level = 13
         p.heroes[2].level = 13
-        p.heroes[0].armor = Item(slot: .armor, rarity: .rare, name: "숲의 판금 갑옷", power: 92, regionIndex: 0)
-        p.heroes[1].weapon = Item(slot: .weapon, rarity: .uncommon, name: "사막의 장궁", power: 12, regionIndex: 1)
-        p.heroes[2].weapon = Item(slot: .weapon, rarity: .legendary, name: "숲의 룬 지팡이", power: 11, regionIndex: 0)
+        p.heroes[0].armor = Item(slot: .armor, rarity: .rare, name: "공책 골무 투구", power: 92, regionIndex: 0)
+        p.heroes[1].weapon = Item(slot: .weapon, rarity: .uncommon, name: "연필꽂이 클립 활", power: 12, regionIndex: 1)
+        p.heroes[2].weapon = Item(slot: .weapon, rarity: .legendary, name: "공책 크레용 지팡이", power: 11, regionIndex: 0)
+        p.heroes[1].accessory = 4
+        p.heroes[2].accessory = 2
         for _ in 0..<13 { p.bag.append(Engine.makeItem(region: Int.random(in: 0...1, using: &rng), boss: false, rng: &rng)) }
         p.bag.append(Engine.makeItem(region: 1, boss: true, rng: &rng))
         p.gold = 4_830
@@ -24,21 +26,56 @@ enum Snapshot {
         p.bossKills = 1
 
         let store = GameStore(progress: p, persist: false)
-        // Advance the fight to a lively moment.
-        for i in 0..<3000 {
-            store.step(dt: 0.1)
-            let b = store.battle
-            if i > 60, b.monsters.count >= 3, b.monsters.allSatisfy({ $0.x < 420 }),
-               b.effects.count >= 4, b.heroes.allSatisfy({ $0.alive }) { break }
-        }
         store.lastOffline = OfflineReport(seconds: 3 * 3600 + 25 * 60, kills: 812, gold: 6_420, items: 9, autoSold: 0, bosses: 0)
         store.banner = nil
         return store
     }
 
+    /// Runs the engine (10 Hz) and the scene (60 Hz) together until a lively moment: a full enemy line
+    /// engaged and a fresh spell exploding.
+    static func liveStrip(_ store: GameStore) -> CGImage? {
+        guard let off = StripOffscreen(store: store) else { return nil }
+        var boltSeen = false, after = 0
+        for tick in 0..<4000 {
+            store.step(dt: 0.1)
+            for _ in 0..<6 { off.step(1.0 / 60) }
+            let b = store.battle
+            let lively = tick > 80 && b.monsters.count >= 3 && b.heroes.allSatisfy(\.alive)
+                && b.monsters.contains { $0.x <= Engine.frontSlotX + 4 }
+            if lively && !boltSeen, b.effects.contains(where: { if case .bolt = $0.kind { return b.time - $0.born < 0.05 } else { return false } }) {
+                boltSeen = true
+            }
+            if boltSeen { after += 1; if after == 4 { break } }
+        }
+        store.banner = nil
+        return off.image()
+    }
+
+    /// `--frames <dir>`: dumps 0.1 s strip frames for eyeballing animation.
+    static func dumpFrames(to dir: URL, seconds: Double = 12) {
+        let store = demoStore()
+        guard let off = StripOffscreen(store: store) else { return }
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var out = dir
+        for i in 0..<Int(seconds * 10) {
+            store.step(dt: 0.1)
+            for _ in 0..<6 { off.step(1.0 / 60) }
+            guard let img = off.image() else { continue }
+            let rep = NSBitmapImageRep(cgImage: img)
+            let url = out.appendingPathComponent(String(format: "f%04d.png", i))
+            if (try? rep.representation(using: .png, properties: [:])?.write(to: url)) == nil {
+                out = FileManager.default.temporaryDirectory.appendingPathComponent("frames")
+                try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+                try? rep.representation(using: .png, properties: [:])?.write(to: out.appendingPathComponent(String(format: "f%04d.png", i)))
+            }
+        }
+        print("frames written: \(out.path)")
+    }
+
     static func render(to url: URL) {
         let store = demoStore()
-        let view = Composite().environment(store)
+        let strip = liveStrip(store)
+        let view = Composite(strip: strip).environment(store).environment(\.staticRendering, true)
         let renderer = ImageRenderer(content: view)
         renderer.scale = 2
         guard let image = renderer.nsImage,
@@ -62,6 +99,7 @@ enum Snapshot {
 
     private struct Composite: View {
         @Environment(GameStore.self) private var store
+        let strip: CGImage?
 
         var body: some View {
             ZStack(alignment: .topLeading) {
@@ -108,9 +146,16 @@ enum Snapshot {
                 RoundedRectangle(cornerRadius: 18).fill(.white.opacity(0.25))
                     .frame(width: 520, height: 62)
                     .offset(x: (1480 - 520) / 2, y: 940 - 68)
-                StripCanvas(progress: store.progress, battle: store.battle, banner: store.banner)
-                    .frame(width: StripLayout.width, height: StripLayout.height)
-                    .offset(x: 8, y: 940 - 72 - StripLayout.height)
+                ZStack(alignment: .topLeading) {
+                    if let strip {
+                        Image(decorative: strip, scale: 2).interpolation(.none)
+                    }
+                    StripHUD(progress: store.progress, banner: nil)
+                        .frame(width: StripLayout.width - StripLayout.battleWidth - 6, height: StripLayout.height)
+                        .offset(x: StripLayout.battleWidth + 6)
+                }
+                .frame(width: StripLayout.width, height: StripLayout.height)
+                .offset(x: 8, y: 940 - 72 - StripLayout.height)
             }
             .frame(width: 1480, height: 940)
         }

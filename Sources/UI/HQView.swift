@@ -91,6 +91,7 @@ struct HQView: View {
 
 private struct HeroCard: View {
     @Environment(GameStore.self) private var store
+    @Environment(\.staticRendering) private var staticRendering
     let index: Int
     let hero: HeroProgress
     let hp: Double
@@ -98,10 +99,37 @@ private struct HeroCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .bottom, spacing: 10) {
-                SpriteView(sprite: Sprites.heroes[index], scale: 4)
+                HeroPortrait(heroClass: hero.heroClass, accessory: hero.accessory, scale: 2)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(hero.heroClass.name).font(.system(size: 16, weight: .heavy, design: .rounded))
+                    HStack(spacing: 6) {
+                        if staticRendering {
+                            Text(hero.displayName).font(.system(size: 16, weight: .heavy, design: .rounded))
+                        } else {
+                        TextField(hero.heroClass.defaultNickname, text: Binding(
+                            get: { hero.nickname ?? "" },
+                            set: { store.rename(index, to: $0) }))
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 16, weight: .heavy, design: .rounded))
+                            .frame(maxWidth: 90)
+                            .help("이름을 눌러 바꿀 수 있어요")
+                        }
+                        Text(hero.heroClass.name).font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.dim)
+                    }
                     Text("Lv. \(hero.level)").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(Theme.gold)
+                    if staticRendering {
+                        Text("꾸미기: \(Accessory.all[hero.accessory ?? 0])")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
+                    } else {
+                    Picker("꾸미기", selection: Binding(
+                        get: { hero.accessory ?? 0 },
+                        set: { store.setAccessory(index, $0) })) {
+                        ForEach(Accessory.all.indices, id: \.self) { i in Text(Accessory.all[i]).tag(i) }
+                    }
+                    .pickerStyle(.menu)
+                    .controlSize(.small)
+                    .frame(maxWidth: 140)
+                    }
                     Text("\(hero.heroClass.skillName) — \(hero.heroClass.skillDescription)")
                         .font(.system(size: 10, design: .rounded)).foregroundStyle(Theme.dim)
                         .fixedSize(horizontal: false, vertical: true)
@@ -175,7 +203,7 @@ private struct ItemDetail: View {
                         onDone()
                     } label: {
                         HStack {
-                            Text("\(hero.heroClass.name)에게 장착")
+                            Text("\(hero.displayName)에게 장착")
                             Spacer()
                             Text(delta >= 0 ? "+\(delta)" : "\(delta)")
                                 .foregroundStyle(delta >= 0 ? Color(hex: 0x9CF0A8) : Color(hex: 0xFF9C9C))
@@ -208,4 +236,13 @@ private struct ItemDetail: View {
 
 extension Array {
     subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
+}
+
+/// True while rendering with ImageRenderer (AppKit-backed controls can't be drawn there).
+private struct StaticRenderingKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    var staticRendering: Bool {
+        get { self[StaticRenderingKey.self] }
+        set { self[StaticRenderingKey.self] = newValue }
+    }
 }

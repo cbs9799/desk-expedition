@@ -41,6 +41,7 @@ struct Effect {
     var kind: Kind
     var x: Double
     var born: Double
+    var id: Int = 0
 }
 
 enum BattlePhase {
@@ -53,8 +54,19 @@ struct Battle {
     var time: Double = 0
     var heroes: [HeroCombat]
     var monsters: [Monster] = []
-    var effects: [Effect] = []
-    var phase: BattlePhase = .spawning(until: 0.6)
+    var effects: [Effect] = [] {
+        didSet { stampEffects(from: oldValue.count) }
+    }
+    var phase: BattlePhase = .spawning(until: 1.2)
+    private(set) var nextEffectID = 1
+
+    private mutating func stampEffects(from start: Int) {
+        guard start < effects.count else { return }
+        for i in start..<effects.count where effects[i].id == 0 {
+            effects[i].id = nextEffectID
+            nextEffectID += 1
+        }
+    }
 }
 
 /// What happened during one or more ticks — the store turns this into banners/notifications.
@@ -108,6 +120,8 @@ enum Engine {
     static let attackRange = 500.0
     static let maxOfflineSeconds = 12.0 * 3600
     static let effectLifetime = 1.2
+    /// Time between waves — the party marches forward while the world scrolls.
+    static let marchSeconds = 2.4
 
     static func newBattle(for p: Progress) -> Battle {
         Battle(heroes: p.heroes.map { h in
@@ -142,7 +156,8 @@ enum Engine {
         }
 
         if effects {
-            b.effects.removeAll { b.time - $0.born > effectLifetime }
+            let now = b.time
+            b.effects.removeAll { now - $0.born > effectLifetime }
         } else if !b.effects.isEmpty {
             b.effects.removeAll()
         }
@@ -287,7 +302,7 @@ enum Engine {
                 let maxHP = p.heroes[i].maxHP
                 b.heroes[i].hp = min(maxHP, max(b.heroes[i].hp, 0) + maxHP * 0.25)
             }
-            b.phase = .spawning(until: b.time + 1.0)
+            b.phase = .spawning(until: b.time + Engine.marchSeconds)
         }
     }
 
@@ -337,8 +352,8 @@ enum Engine {
         return roll < 0.70 ? .common : roll < 0.92 ? .uncommon : roll < 0.99 ? .rare : .legendary
     }
 
-    static let weaponNames = ["롱소드", "전투 도끼", "장궁", "룬 지팡이", "쌍단검", "철퇴"]
-    static let armorNames = ["가죽 갑옷", "사슬 갑옷", "판금 갑옷", "마법 로브", "비늘 망토", "방패"]
+    static let weaponNames = ["바늘 검", "압정 창", "클립 활", "크레용 지팡이", "커터 단검", "자 몽둥이"]
+    static let armorNames = ["골무 투구", "병뚜껑 방패", "포스트잇 망토", "지우개 갑옷", "단추 방패", "실타래 로브"]
 
     static func makeItem<R: RandomNumberGenerator>(region: Int, boss: Bool, rng: inout R) -> Item {
         let slot: GearSlot = Bool.random(using: &rng) ? .weapon : .armor
