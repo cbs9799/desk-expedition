@@ -47,6 +47,7 @@ struct StripSpriteView: NSViewRepresentable {
     }
 }
 
+/// Floating HUD: no panel — every readout hangs in the air on its own soft shadow.
 struct StripHUD: View {
     let progress: Progress
     let banner: String?
@@ -55,48 +56,63 @@ struct StripHUD: View {
         Canvas { ctx, size in draw(ctx, size: size) }
     }
 
-    private func draw(_ ctx: GraphicsContext, size: CGSize) {
-        let panel = Path(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: 12)
-        ctx.fill(panel, with: .linearGradient(
-            Gradient(colors: [Color(hex: 0x1A1424, opacity: 0.82), Color(hex: 0x120E1A, opacity: 0.9)]),
-            startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
-        ctx.stroke(panel, with: .color(Color(hex: 0xFFD45A, opacity: 0.18)), lineWidth: 1)
+    private func floating(_ ctx: GraphicsContext) -> GraphicsContext {
+        var c = ctx
+        c.addFilter(.shadow(color: .black.opacity(0.85), radius: 1.2, x: 0, y: 1))
+        c.addFilter(.shadow(color: .black.opacity(0.45), radius: 5, x: 0, y: 2))
+        return c
+    }
 
-        let x0: CGFloat = 12
+    private func draw(_ base: GraphicsContext, size: CGSize) {
+        let ctx = floating(base)
+        let x0: CGFloat = 14
         if let banner {
-            let text = Text(banner).font(.system(size: 12, weight: .bold, design: .rounded))
+            let text = Text(banner).font(.system(size: 13, weight: .heavy, design: .rounded))
                 .foregroundColor(Color(hex: 0xFFE27A))
-            ctx.draw(text, in: CGRect(x: x0, y: 14, width: size.width - 24, height: size.height - 20))
+            ctx.draw(text, in: CGRect(x: x0, y: 18, width: size.width - 24, height: size.height - 24))
             return
         }
 
         let p = progress
         let waveText = p.isBossWave ? (p.isEndless ? "\(p.wave)층 보스!" : "보스전!") : p.stageText
-        ctx.draw(Text(p.region.name).font(.system(size: 13, weight: .heavy, design: .rounded)).foregroundColor(.white),
+        ctx.draw(Text(p.region.name).font(.system(size: 15, weight: .black, design: .rounded)).foregroundColor(.white),
                  at: CGPoint(x: x0, y: 22), anchor: .leading)
-        ctx.draw(Text(waveText).font(.system(size: 11, weight: .bold, design: .rounded))
-            .foregroundColor(p.isBossWave ? Color(hex: 0xFF7A7A) : .white.opacity(0.7)),
-                 at: CGPoint(x: size.width - 12, y: 22), anchor: .trailing)
+        ctx.draw(Text(waveText).font(.system(size: 12, weight: .heavy, design: .rounded))
+            .foregroundColor(p.isBossWave ? Color(hex: 0xFF8A8A) : Color(hex: 0xE8ECFF)),
+                 at: CGPoint(x: size.width - 14, y: 23), anchor: .trailing)
 
-        let pipW = (size.width - 24 - 9 * 4) / 10
-        for w in 1...Region.wavesPerRegion {
-            let rect = CGRect(x: x0 + CGFloat(w - 1) * (pipW + 4), y: 36, width: pipW, height: 5)
-            let boss = w == Region.wavesPerRegion
+        // Wave gems: little floating diamonds instead of a bar.
+        let n = Region.wavesPerRegion
+        let gap = (size.width - 28) / CGFloat(n)
+        for w in 1...n {
+            let c = CGPoint(x: x0 + gap * (CGFloat(w) - 0.5), y: 42)
+            let boss = w == n
+            let r: CGFloat = w == p.pipWave ? 5.5 : boss ? 5 : 4
+            var gem = Path()
+            gem.move(to: CGPoint(x: c.x, y: c.y - r)); gem.addLine(to: CGPoint(x: c.x + r, y: c.y))
+            gem.addLine(to: CGPoint(x: c.x, y: c.y + r)); gem.addLine(to: CGPoint(x: c.x - r, y: c.y)); gem.closeSubpath()
             let color: Color = w < p.pipWave ? Color(hex: 0x6BE36F)
                 : w == p.pipWave ? Color(hex: 0xFFD45A)
-                : boss ? Color(hex: 0xFF7A7A, opacity: 0.4) : .white.opacity(0.15)
-            ctx.fill(Path(roundedRect: rect, cornerRadius: 2.5), with: .color(color))
+                : boss ? Color(hex: 0xFF7A7A, opacity: 0.55) : .white.opacity(0.28)
+            ctx.fill(gem, with: .color(color))
+            if w == p.pipWave {
+                base.fill(Path(ellipseIn: CGRect(x: c.x - 9, y: c.y - 9, width: 18, height: 18)),
+                          with: .color(Color(hex: 0xFFD45A, opacity: 0.25)))
+            }
         }
 
-        let bagColor: Color = p.bagIsFull ? Color(hex: 0xFF7A7A) : .white.opacity(0.85)
-        ctx.draw(Text("🪙 \(p.gold.formatted())").font(.system(size: 13, weight: .heavy, design: .rounded))
+        let bagColor: Color = p.bagIsFull ? Color(hex: 0xFF8A8A) : .white
+        ctx.draw(Text("🪙 \(p.gold.formatted())").font(.system(size: 15, weight: .black, design: .rounded))
             .foregroundColor(Color(hex: 0xFFD45A)), at: CGPoint(x: x0, y: 66), anchor: .leading)
-        ctx.draw(Text("🎒 \(p.bag.count)/\(Progress.bagCapacity)").font(.system(size: 12, weight: .bold, design: .rounded))
-            .foregroundColor(bagColor), at: CGPoint(x: x0 + 124, y: 66), anchor: .leading)
-        ctx.draw(Text("⚔️ \(p.totalKills.formatted())").font(.system(size: 11, weight: .semibold, design: .rounded))
-            .foregroundColor(.white.opacity(0.6)), at: CGPoint(x: size.width - 12, y: 66), anchor: .trailing)
-        let names = p.heroes.map(\.displayName).joined(separator: " · ") + "   📖 \(p.journal.count) · 도감 \(p.dex.count)/\(Species.slotCount)"
-        ctx.draw(Text(names).font(.system(size: 10, weight: .semibold, design: .rounded))
-            .foregroundColor(.white.opacity(0.45)), at: CGPoint(x: x0, y: 86), anchor: .leading)
+        ctx.draw(Text("🎒 \(p.bag.count)/\(Progress.bagCapacity)").font(.system(size: 13, weight: .heavy, design: .rounded))
+            .foregroundColor(bagColor), at: CGPoint(x: x0 + 128, y: 66), anchor: .leading)
+        ctx.draw(Text("⚔️ \(p.totalKills.formatted())").font(.system(size: 12, weight: .bold, design: .rounded))
+            .foregroundColor(.white.opacity(0.85)), at: CGPoint(x: size.width - 14, y: 66), anchor: .trailing)
+        let names = p.heroes.map(\.displayName).joined(separator: " · ")
+        ctx.draw(Text(names).font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(.white.opacity(0.8)),
+                 at: CGPoint(x: x0, y: 87), anchor: .leading)
+        ctx.draw(Text("📖 \(p.journal.count)  도감 \(p.dex.count)/\(Species.slotCount)")
+            .font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(Color(hex: 0x9CF4FF)),
+                 at: CGPoint(x: size.width - 14, y: 87), anchor: .trailing)
     }
 }

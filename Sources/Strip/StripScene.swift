@@ -17,22 +17,22 @@ final class StripScene: SKScene {
     weak var store: GameStore?
     var onOpenHQ: () -> Void = {}
 
-    // Layers
-    private let crop = SKCropNode()
+    // Layers (back → front). No box: scenery fades out at the top and the sides, so the
+    // diorama floats on the desktop with only the ground anchoring it.
     private let world = SKNode()
-    private let farLayer = SKNode(), groundLayer = SKNode(), propLayer = SKNode()
-    private let actorLayer = SKNode(), fxLayer = SKNode(), textLayer = SKNode()
-    private let overlayFX = SKNode()   // not cropped (coins flying to the HUD)
+    private let farLayer = SKNode(), midLayer = SKNode(), groundBackLayer = SKNode(), groundLayer = SKNode()
+    private let propLayer = SKNode(), actorLayer = SKNode(), foreLayer = SKNode()
+    private let fxLayer = SKNode(), textLayer = SKNode()
+    private let overlayFX = SKNode()   // coins flying to the HUD
 
     // World scroll
     private var scroll: CGFloat = 0
     private var speedNow: CGFloat = 0
-    private var farTiles: [SKSpriteNode] = [], groundTiles: [SKSpriteNode] = []
-    private var props: [(node: SKSpriteNode, worldX: CGFloat)] = []
-    private var nextPropX: CGFloat = 300
+    private var bands: [ParallaxBand] = []
+    private var lanes: [PropLane] = []
     private var sceneKey = ""
     private var groundTop: CGFloat = 34
-    private var hazeNode: SKNode?
+    private var themeMul = NSColor.white
 
     // Actors
     private var heroes: [HeroActor] = []
@@ -61,13 +61,9 @@ final class StripScene: SKScene {
         backgroundColor = .clear
         anchorPoint = .zero
 
-        let mask = SKShapeNode(rect: Self.viewport, cornerRadius: 12)
-        mask.fillColor = .white
-        mask.strokeColor = .clear
-        crop.maskNode = mask
-        addChild(crop)
-        crop.addChild(world)
-        for (z, layer) in [farLayer, groundLayer, propLayer, actorLayer, fxLayer, textLayer].enumerated() {
+        addChild(world)
+        let order = [farLayer, midLayer, groundBackLayer, groundLayer, propLayer, actorLayer, foreLayer, fxLayer, textLayer]
+        for (z, layer) in order.enumerated() {
             layer.zPosition = CGFloat(z * 10)
             world.addChild(layer)
         }
@@ -129,45 +125,98 @@ final class StripScene: SKScene {
 
     // MARK: World
 
+    /// Parallax speeds (× ground speed).
+    enum Depth {
+        static let far: CGFloat = 0.25, mid: CGFloat = 0.55, groundBack: CGFloat = 0.8
+        static let ground: CGFloat = 1, fore: CGFloat = 1.45
+    }
+
     private func loadRegion(_ region: Region) {
         sceneKey = region.scene
-        for n in farTiles + groundTiles { n.removeFromParent() }
-        farTiles = []; groundTiles = []
-        for pr in props { pr.node.removeFromParent() }
-        props = []
-        nextPropX = scroll + 260
+        for b in bands { b.tiles.forEach { $0.removeFromParent() } }
+        for l in lanes { l.items.forEach { $0.node.removeFromParent() } }
+        bands = []; lanes = []
 
-        func tiles(_ name: String, y: CGFloat, into layer: SKNode) -> [SKSpriteNode] {
-            guard let t = Backdrop.texture(name) else { return [] }
-            let w = t.size().width * PixelArt.scale
-            let count = Int(ceil(Self.viewport.width / w)) + 1
-            return (0..<count).map { _ in
-                let n = SKSpriteNode(texture: t)
-                n.anchorPoint = .zero
-                n.setScale(PixelArt.scale)
-                n.position = CGPoint(x: 0, y: y)
-                layer.addChild(n)
-                return n
-            }
+        let ground = Backdrop.texture("bg_\(region.scene)_ground")
+        let far = Backdrop.texture("bg_\(region.scene)_far")
+        var groundH: CGFloat = 30
+        if let g = ground {
+            // The walkable floor is split in two so its back edge slides slower than the strip under the feet.
+            let backFrac: CGFloat = 0.4
+            let back = SKTexture(rect: CGRect(x: 0, y: 1 - backFrac, width: 1, height: backFrac), in: g)
+            let front = SKTexture(rect: CGRect(x: 0, y: 0, width: 1, height: 1 - backFrac), in: g)
+            back.filteringMode = .nearest; front.filteringMode = .nearest
+            let frontH = front.size().height * Backdrop.nodeScale
+            groundH = g.size().height * Backdrop.nodeScale
+            bands.append(ParallaxBand(texture: front, y: 0, speed: Depth.ground, layer: groundLayer, scene: self))
+            bands.append(ParallaxBand(texture: back, y: frontH - 0.5, speed: Depth.groundBack, layer: groundBackLayer, scene: self))
         }
-        groundTiles = tiles("bg_\(region.scene)_ground", y: 0, into: groundLayer)
-        let groundTop = (groundTiles.first?.size.height ?? 30) - 1
-        self.groundTop = groundTop
-        farTiles = tiles("bg_\(region.scene)_far", y: groundTop, into: farLayer)
-        // Depth: dim the scenery a little so the characters pop.
-        let haze = SKSpriteNode(color: NSColor(hex: 0x140C22, alpha: 0.28),
-                                size: CGSize(width: Self.viewport.width, height: Self.viewport.height - groundTop))
-        haze.anchorPoint = .zero
-        haze.position = CGPoint(x: 0, y: groundTop)
-        haze.zPosition = 5
-        farLayer.addChild(haze)
-        hazeNode?.removeFromParent()
-        hazeNode = haze
-        if farTiles.isEmpty {   // art missing → soft gradient fallback
-            let n = SKSpriteNode(color: NSColor(hex: 0x2B3550), size: Self.viewport.size)
-            n.anchorPoint = .zero
-            farTiles = [n]; farLayer.addChild(n)
+        groundTop = groundH - 1
+        if let f = far {
+            bands.append(ParallaxBand(texture: f, y: groundTop - 1, speed: Depth.far, layer: farLayer, scene: self,
+                                      tint: (NSColor(hex: 0x1A1030), 0.22)))
         }
+
+        let props = SpriteSheet.named("props_\(region.scene)")
+        let usable = (0..<(props?.frames.count ?? 0)).filter { !(Self.skipProps[region.scene] ?? []).contains($0) }
+        // Mid: small hazy props on the horizon.
+        lanes.append(PropLane(layer: midLayer, speed: Depth.mid, spacing: 70...170, y: groundTop - 1) { [weak self] in
+            guard let props, let f = usable.randomElement() else { return nil }
+            let n = SKSpriteNode(texture: props.frames[f])
+            n.anchorPoint = props.anchor
+            n.setScale(PixelArt.scale * CGFloat.random(in: 0.38...0.5))
+            self?.scenery(n, tint: (NSColor(hex: 0x9AA6D0), 0.45))
+            return n
+        })
+        // Near: props and trophies on the back edge of the floor, behind the party.
+        lanes.append(PropLane(layer: propLayer, speed: Depth.ground, spacing: 170...340, y: groundTop - 4) { [weak self] in
+            self?.makeNearProp(props: props, usable: usable)
+        })
+        // Fore: big dark silhouettes sliding past in front of everyone, mostly below the frame.
+        lanes.append(PropLane(layer: foreLayer, speed: Depth.fore, spacing: 380...760, y: -34) { [weak self] in
+            guard let props, let f = usable.randomElement() else { return nil }
+            let n = SKSpriteNode(texture: props.frames[f])
+            n.anchorPoint = props.anchor
+            n.setScale(PixelArt.scale * CGFloat.random(in: 1.3...1.6))
+            self?.scenery(n, tint: (NSColor(hex: 0x120A1C), 0.7), alpha: 0.9)
+            return n
+        })
+        for l in lanes { l.nextX = scroll * l.speed + CGFloat.random(in: 40...200) }
+        applyThemeTint()
+    }
+
+    private func makeNearProp(props: SpriteSheet?, usable: [Int]) -> SKSpriteNode? {
+        let owned = Array(store?.progress.trophies ?? [])
+        if !owned.isEmpty, Double.random(in: 0..<1) < 0.22, let tsheet = SpriteSheet.named("trophies"),
+           let t = owned.randomElement(), tsheet.frames.indices.contains(t) {
+            let n = SKSpriteNode(texture: tsheet.frames[t])
+            n.anchorPoint = tsheet.anchor
+            n.setScale(PixelArt.scale)
+            scenery(n)
+            let glint = SKSpriteNode(texture: FX.flare, size: CGSize(width: 14, height: 14))
+            glint.color = FX.gold; glint.colorBlendFactor = 1; glint.blendMode = .add
+            glint.position = CGPoint(x: 2, y: CGFloat(tsheet.meta.cellH) * 0.7)
+            glint.setScale(1 / PixelArt.scale)
+            glint.run(.repeatForever(.sequence([.fadeAlpha(to: 0.1, duration: 0.5), .fadeAlpha(to: 1, duration: 0.5)])))
+            n.addChild(glint)
+            return n
+        }
+        guard let props, let f = usable.randomElement() else { return nil }
+        let n = SKSpriteNode(texture: props.frames[f])
+        n.anchorPoint = props.anchor
+        n.setScale(PixelArt.scale * CGFloat.random(in: 0.55...0.75))
+        scenery(n, tint: (NSColor(hex: 0x2A2040), 0.15))
+        return n
+    }
+
+    /// Gives a scenery sprite the edge-fade shader (plus an optional tint toward a color).
+    func scenery(_ n: SKSpriteNode, tint: (NSColor, CGFloat)? = nil, alpha: CGFloat = 1) {
+        n.shader = SceneryShader.shader
+        n.alpha = alpha
+        SceneryShader.setTint(n, tint?.0 ?? .white, Float(tint?.1 ?? 0))
+        SceneryShader.setMul(n, themeMul)
+        FlashShader.setAtlasSize(n)
+        SceneryShader.updateMap(n)
     }
 
     private func updateScroll(dt: Double, battle b: Battle) {
@@ -181,55 +230,11 @@ final class StripScene: SKScene {
         }
         speedNow += (target - speedNow) * CGFloat(min(1, dt * 4))
         scroll += speedNow * CGFloat(dt)
-
-        func wrap(_ tiles: [SKSpriteNode], factor: CGFloat) {
-            guard let w = tiles.first.map({ $0.size.width }), w > 0, tiles.count > 1 else { return }
-            let off = (scroll * factor).truncatingRemainder(dividingBy: w)
-            for (i, n) in tiles.enumerated() {
-                n.position.x = (CGFloat(i) * w - off).rounded(toPixel: 0.5)
-            }
-        }
-        wrap(farTiles, factor: 0.3)
-        wrap(groundTiles, factor: 1)
-
-        // Foreground props stream past at ground speed.
-        while nextPropX < scroll + Self.viewport.width + 80 {
-            let owned = Array(store?.progress.trophies ?? [])
-            if !owned.isEmpty, Double.random(in: 0..<1) < 0.22, let tsheet = SpriteSheet.named("trophies"),
-               let t = owned.randomElement(), tsheet.frames.indices.contains(t) {
-                let n = SKSpriteNode(texture: tsheet.frames[t])
-                n.anchorPoint = tsheet.anchor
-                n.setScale(PixelArt.scale)
-                n.zPosition = 2
-                let glint = SKSpriteNode(texture: FX.flare, size: CGSize(width: 14, height: 14))
-                glint.color = FX.gold; glint.colorBlendFactor = 1; glint.blendMode = .add
-                glint.position = CGPoint(x: 2, y: CGFloat(tsheet.meta.cellH) * 0.7)
-                glint.setScale(1 / PixelArt.scale)
-                glint.run(.repeatForever(.sequence([.fadeAlpha(to: 0.1, duration: 0.5), .fadeAlpha(to: 1, duration: 0.5)])))
-                n.addChild(glint)
-                propLayer.addChild(n)
-                props.append((n, nextPropX))
-            } else if let sheet = SpriteSheet.named("props_\(sceneKey)") {
-                let usable = (0..<sheet.frames.count).filter { !(Self.skipProps[sceneKey] ?? []).contains($0) }
-                let n = SKSpriteNode(texture: sheet.frames[usable.randomElement() ?? 0])
-                n.anchorPoint = sheet.anchor
-                n.setScale(PixelArt.scale * CGFloat.random(in: 0.55...0.75))
-                n.color = NSColor(hex: 0x2A2040)
-                n.colorBlendFactor = 0.2
-                n.zPosition = CGFloat.random(in: 0...1)
-                propLayer.addChild(n)
-                props.append((n, nextPropX))
-            }
-            nextPropX += CGFloat.random(in: 170...340)
-        }
-        props.removeAll { pr in
-            let x = pr.worldX - scroll
-            pr.node.position = CGPoint(x: x.rounded(toPixel: 0.5), y: groundTop - 3)
-            if x < -120 { pr.node.removeFromParent(); return true }
-            return false
-        }
+        for band in bands { band.layout(scroll: scroll) }
+        for lane in lanes { lane.update(scroll: scroll) }
     }
 
+    // MARK: Heroes
     // MARK: Heroes
 
     private func syncHeroes(_ b: Battle, progress p: Progress, dt: Double) {
@@ -475,21 +480,18 @@ final class StripScene: SKScene {
     /// Desk theme after moving: multiply-tint the scenery (not the characters).
     private func applyTheme(_ theme: Int) {
         seenTheme = theme
-        themeNode?.removeFromParent()
-        let tint = DeskTheme.tints[theme % DeskTheme.tints.count]
-        guard tint != 0xFFFFFF else { themeNode = nil; return }
-        let n = SKSpriteNode(color: NSColor(hex: tint), size: Self.viewport.size)
-        n.anchorPoint = .zero
-        n.blendMode = .multiply
-        n.zPosition = 25   // above props (20), below actors (30)
-        world.addChild(n)
-        themeNode = n
+        themeMul = NSColor(hex: DeskTheme.tints[theme % DeskTheme.tints.count])
+        applyThemeTint()
+    }
+
+    private func applyThemeTint() {
+        for b in bands { b.tiles.forEach { SceneryShader.setMul($0, themeMul) } }
+        for l in lanes { l.items.forEach { SceneryShader.setMul($0.node, themeMul) } }
     }
 
     // MARK: Celebrations & affection
 
     private var seenDex = -1
-    private var themeNode: SKSpriteNode?
     private var seenTheme = -1
 
     private func celebrations(_ store: GameStore) {
@@ -546,7 +548,7 @@ enum FlashShader {
     static let shader: SKShader = {
         let s = SKShader(source: """
         void main() {
-            vec4 c = texture2D(u_texture, v_tex_coord);
+            vec4 c = texture2D(u_texture, (floor(v_tex_coord * a_tex) + 0.5) / a_tex);
             vec3 rgb = c.rgb;
             if (a_hue != 0.0) {
                 float ca = cos(a_hue), sa = sin(a_hue);
@@ -559,9 +561,19 @@ enum FlashShader {
         }
         """)
         s.attributes = [SKAttribute(name: "a_flash", type: .float), SKAttribute(name: "a_fc", type: .vectorFloat3),
-                        SKAttribute(name: "a_hue", type: .float)]
+                        SKAttribute(name: "a_hue", type: .float), SKAttribute(name: "a_tex", type: .vectorFloat2)]
         return s
     }()
+
+    /// Custom shaders sample linearly regardless of `filteringMode`, so both shaders snap UVs to texel
+    /// centers themselves. `a_tex` = size in texels of the whole atlas the node's texture lives in.
+    static func setAtlasSize(_ node: SKSpriteNode) {
+        guard let t = node.texture else { return }
+        let r = t.textureRect()
+        node.setValue(SKAttributeValue(vectorFloat2: vector_float2(Float(t.size().width / max(r.width, 0.0001)),
+                                                                   Float(t.size().height / max(r.height, 0.0001)))),
+                      forAttribute: "a_tex")
+    }
 
     static func setHue(_ node: SKSpriteNode, _ radians: Float) {
         node.setValue(SKAttributeValue(float: radians), forAttribute: "a_hue")
@@ -764,8 +776,10 @@ final class HeroActor {
         frameIndex = frameIndex.wrapped(frames.count)
         let tex = frames[frameIndex]
         if sprite.texture !== tex {
+            let first = sprite.texture == nil
             sprite.texture = tex
             sprite.size = CGSize(width: tex.size().width * PixelArt.scale, height: tex.size().height * PixelArt.scale)
+            if first { FlashShader.setAtlasSize(sprite) }
         }
         sprite.xScale = retreating ? -PixelArt.scale : PixelArt.scale
         sprite.alpha = alive ? 1 : 0.6
@@ -913,8 +927,10 @@ final class MonsterActor {
         }
         let tex = frames[idx.wrapped(frames.count)]
         if sprite.texture !== tex {
+            let first = sprite.texture == nil
             sprite.texture = tex
             sprite.size = CGSize(width: tex.size().width * PixelArt.scale, height: tex.size().height * PixelArt.scale)
+            if first { FlashShader.setAtlasSize(sprite) }
         }
         let bob = flyer ? CGFloat(sin(clock * 4 + Double(ex) * 0.1)) * 3 : 0
         root.position = CGPoint(x: drawX.rounded(toPixel: 0.5), y: groundY)
@@ -938,5 +954,120 @@ extension Int {
         guard count > 0 else { return 0 }
         let r = self % count
         return r < 0 ? r + count : r
+    }
+}
+
+// MARK: - Scenery helpers
+
+/// Fades scenery out toward the top and both sides (no hard box), with an optional tint and a theme multiply.
+/// `a_map` maps texture coordinates to scene points so the fade is computed in scene space.
+@MainActor
+enum SceneryShader {
+    static let fadeRight = StripLayout.battleWidth + 10
+    static let shader: SKShader = {
+        let s = SKShader(source: """
+        void main() {
+            vec4 c = texture2D(u_texture, (floor(v_tex_coord * a_tex) + 0.5) / a_tex);
+            vec2 p = vec2(v_tex_coord.x * a_map.x + a_map.y, v_tex_coord.y * a_map.z + a_map.w);
+            float side = smoothstep(0.0, 46.0, p.x) * (1.0 - smoothstep(\(Int(fadeRight) - 90).0, \(Int(fadeRight)).0, p.x));
+            float top = 1.0 - smoothstep(70.0, 100.0, p.y);
+            float bottom = smoothstep(-6.0, 6.0, p.y);
+            vec3 rgb = mix(c.rgb, a_tint.rgb * c.a, a_tint.a) * a_mul;
+            gl_FragColor = vec4(rgb, c.a) * (side * top * bottom) * v_color_mix.a;
+        }
+        """)
+        s.attributes = [SKAttribute(name: "a_map", type: .vectorFloat4), SKAttribute(name: "a_tint", type: .vectorFloat4),
+                        SKAttribute(name: "a_mul", type: .vectorFloat3), SKAttribute(name: "a_tex", type: .vectorFloat2)]
+        return s
+    }()
+
+    static func rgb(_ c: NSColor) -> (Float, Float, Float) {
+        let c = c.usingColorSpace(.sRGB) ?? c
+        return (Float(c.redComponent), Float(c.greenComponent), Float(c.blueComponent))
+    }
+
+    static func setTint(_ n: SKSpriteNode, _ color: NSColor, _ amount: Float) {
+        let (r, g, b) = rgb(color)
+        n.setValue(SKAttributeValue(vectorFloat4: vector_float4(r, g, b, amount)), forAttribute: "a_tint")
+    }
+
+    static func setMul(_ n: SKSpriteNode, _ color: NSColor) {
+        let (r, g, b) = rgb(color)
+        n.setValue(SKAttributeValue(vectorFloat3: vector_float3(r, g, b)), forAttribute: "a_mul")
+    }
+
+    /// Call after the node moves: texture coords → scene points (layers sit at the world origin).
+    static func updateMap(_ n: SKSpriteNode) {
+        guard let t = n.texture else { return }
+        let r = t.textureRect(), f = n.frame
+        let sx = f.width / max(r.width, 0.0001), sy = f.height / max(r.height, 0.0001)
+        n.setValue(SKAttributeValue(vectorFloat4: vector_float4(Float(sx), Float(f.minX - r.minX * sx),
+                                                                Float(sy), Float(f.minY - r.minY * sy))),
+                   forAttribute: "a_map")
+    }
+}
+
+/// A horizontally looping band of tiles moving at `speed` × the ground.
+@MainActor
+final class ParallaxBand {
+    let tiles: [SKSpriteNode]
+    let speed: CGFloat
+    private let width: CGFloat
+
+    init(texture: SKTexture, y: CGFloat, speed: CGFloat, layer: SKNode, scene: StripScene, tint: (NSColor, CGFloat)? = nil) {
+        self.speed = speed
+        width = texture.size().width * Backdrop.nodeScale
+        let count = Int(ceil((SceneryShader.fadeRight + 20) / width)) + 1
+        tiles = (0..<count).map { _ in
+            let n = SKSpriteNode(texture: texture)
+            n.anchorPoint = .zero
+            n.setScale(Backdrop.nodeScale)
+            n.position = CGPoint(x: 0, y: y)
+            layer.addChild(n)
+            scene.scenery(n, tint: tint)
+            return n
+        }
+    }
+
+    func layout(scroll: CGFloat) {
+        let off = (scroll * speed).truncatingRemainder(dividingBy: width)
+        for (i, n) in tiles.enumerated() {
+            n.position.x = (CGFloat(i) * width - off).rounded(toPixel: 0.5)
+            SceneryShader.updateMap(n)
+        }
+    }
+}
+
+/// Props spawned along a depth lane and scrolled at that lane's speed.
+@MainActor
+final class PropLane {
+    let layer: SKNode
+    let speed: CGFloat
+    let spacing: ClosedRange<CGFloat>
+    let y: CGFloat
+    let make: () -> SKSpriteNode?
+    var items: [(node: SKSpriteNode, x: CGFloat)] = []
+    var nextX: CGFloat = 0
+
+    init(layer: SKNode, speed: CGFloat, spacing: ClosedRange<CGFloat>, y: CGFloat, make: @escaping () -> SKSpriteNode?) {
+        self.layer = layer; self.speed = speed; self.spacing = spacing; self.y = y; self.make = make
+    }
+
+    func update(scroll: CGFloat) {
+        let pos = scroll * speed
+        while nextX < pos + SceneryShader.fadeRight + 120 {
+            if let n = make() {
+                layer.addChild(n)
+                items.append((n, nextX))
+            }
+            nextX += CGFloat.random(in: spacing)
+        }
+        items.removeAll { item in
+            let x = item.x - pos
+            item.node.position = CGPoint(x: x.rounded(toPixel: 0.5), y: y)
+            SceneryShader.updateMap(item.node)
+            if x < -160 { item.node.removeFromParent(); return true }
+            return false
+        }
     }
 }

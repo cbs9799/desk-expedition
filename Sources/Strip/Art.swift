@@ -101,13 +101,26 @@ final class SpriteSheet {
 }
 
 /// Tileable background bands (`bg_<scene>_far.png`, `bg_<scene>_ground.png`).
+/// Stored pre-upscaled ×3 with nearest neighbour (one texel per Retina pixel), so the bands stay
+/// crisp even when a custom shader samples them with linear filtering.
 @MainActor
 enum Backdrop {
+    static let upscale = 3
+    /// Node scale that shows one art pixel as `PixelArt.scale` points.
+    static var nodeScale: CGFloat { PixelArt.scale / CGFloat(upscale) }
+
     static func texture(_ name: String) -> SKTexture? {
         guard let url = Bundle.main.url(forResource: name, withExtension: "png"),
               let src = CGImageSourceCreateWithURL(url as CFURL, nil),
               let image = CGImageSourceCreateImageAtIndex(src, 0, nil) else { return nil }
-        let t = SKTexture(cgImage: image)
+        let w = image.width * upscale, h = image.height * upscale
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.interpolationQuality = .none
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        guard let big = ctx.makeImage() else { return nil }
+        let t = SKTexture(cgImage: big)
         t.filteringMode = .nearest
         return t
     }
