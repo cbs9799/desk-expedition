@@ -48,9 +48,16 @@ enum Snapshot {
             FileHandle.standardError.write("snapshot failed\n".data(using: .utf8)!)
             return
         }
-        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try? png.write(to: url)
-        print("snapshot written: \(url.path)")
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try png.write(to: url)
+            print("snapshot written: \(url.path)")
+        } catch {
+            // Sandboxed builds can't write outside the container — fall back to the container's tmp dir.
+            let fallback = FileManager.default.temporaryDirectory.appendingPathComponent("screenshot.png")
+            try? png.write(to: fallback)
+            print("snapshot written: \(fallback.path)")
+        }
     }
 
     private struct Composite: View {
@@ -78,28 +85,24 @@ enum Snapshot {
                 .background(Color.black.opacity(0.25))
 
                 // HQ window.
-                VStack(spacing: 0) {
-                    HStack(spacing: 8) {
-                        Circle().fill(Color(hex: 0xFF5F57)).frame(width: 12, height: 12)
-                        Circle().fill(Color(hex: 0xFEBC2E)).frame(width: 12, height: 12)
-                        Circle().fill(Color(hex: 0x28C840)).frame(width: 12, height: 12)
-                        Spacer()
+                HQView()
+                    .overlay(alignment: .topLeading) {
+                        HStack(spacing: 8) {
+                            Circle().fill(Color(hex: 0xFF5F57)).frame(width: 12, height: 12)
+                            Circle().fill(Color(hex: 0xFEBC2E)).frame(width: 12, height: 12)
+                            Circle().fill(Color(hex: 0x28C840)).frame(width: 12, height: 12)
+                        }
+                        .padding(12)
                     }
-                    .padding(.horizontal, 12)
-                    .frame(height: 0)
-                    .offset(y: 16)
-                    .zIndex(1)
-                    HQView()
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: .black.opacity(0.4), radius: 24, y: 10)
-                .offset(x: 60, y: 70)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .shadow(color: .black.opacity(0.4), radius: 24, y: 10)
+                    .offset(x: 40, y: 60)
 
                 // Menu bar popover.
                 MenuView()
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .shadow(color: .black.opacity(0.4), radius: 18, y: 8)
-                    .offset(x: 1480 - 300 - 150, y: 36)
+                    .offset(x: 1480 - 300 - 24, y: 36)
 
                 // Strip above a fake Dock.
                 RoundedRectangle(cornerRadius: 18).fill(.white.opacity(0.25))
