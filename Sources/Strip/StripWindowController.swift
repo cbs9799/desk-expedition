@@ -43,7 +43,10 @@ final class StripWindowController {
                 }
             }
         }
-        store.onSettingsChanged = { [weak self] in self?.apply() }
+        store.onSettingsChanged = { [weak self] in
+            self?.apply()
+            Updater.shared.apply(auto: GameStore.shared.settings.autoUpdate)
+        }
         apply()
     }
 

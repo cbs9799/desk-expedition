@@ -21,6 +21,7 @@
 		0F3E80F9E32F99A61B9E71D4 /* mon_eraser_slime.json in Resources */ = {isa = PBXBuildFile; fileRef = ABF7C9A7EFFB8004A7BD23CD /* mon_eraser_slime.json */; };
 		10649C19A583204CAE7A05AB /* props2_monitor.json in Resources */ = {isa = PBXBuildFile; fileRef = 2A318F5E35EE40D02C20AF78 /* props2_monitor.json */; };
 		10F6B81C855B54858DA9671B /* props_drawer.png in Resources */ = {isa = PBXBuildFile; fileRef = AEDE6086184B04559E929D44 /* props_drawer.png */; };
+		123CE4A2619B01351F21B72C /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29C62DC762B2C3DCDC9F88B4 /* Updater.swift */; };
 		148395B080D0A79FF86B5BA7 /* trophies.png in Resources */ = {isa = PBXBuildFile; fileRef = 10F159C3F77948F4C1C8D2AF /* trophies.png */; };
 		1737FEFF50925199D24429B3 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A7463B096ECB76A5927CF78 /* L10n.swift */; };
 		18020E9BA8ADA8B8004F9B12 /* mon_stapler_king.json in Resources */ = {isa = PBXBuildFile; fileRef = 71E62E4847104C14C5491E28 /* mon_stapler_king.json */; };
@@ -93,6 +94,7 @@
 		85336D38C54CFE0DC8EA97B7 /* mon_teabag_ghost.json in Resources */ = {isa = PBXBuildFile; fileRef = 51B89FB301FD60F02C7650AB /* mon_teabag_ghost.json */; };
 		89F60C5D4B44A03825C50E23 /* props2_pencilcup.png in Resources */ = {isa = PBXBuildFile; fileRef = F0B838F8AC9F7D6E916AB47F /* props2_pencilcup.png */; };
 		8DEB1EFADF000BAEF75C0EEB /* bg_mug_far.png in Resources */ = {isa = PBXBuildFile; fileRef = 14035F15A265E820B619FB04 /* bg_mug_far.png */; };
+		8E48FD383763C656CBD904E4 /* Sparkle.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FC5950A4A08EF65372A409AA /* Sparkle.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8F991FD66D50869B10309C41 /* props_mug.json in Resources */ = {isa = PBXBuildFile; fileRef = 753820462BE16EFF3B2E2041 /* props_mug.json */; };
 		91D899478D5CDDBD1B70664A /* items_unique_a.png in Resources */ = {isa = PBXBuildFile; fileRef = D8E05843A0DA1AD36CB5601E /* items_unique_a.png */; };
 		950096F40F22C978CCF1114C /* BulkSellMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 748581ED6A2513BAF9060234 /* BulkSellMenu.swift */; };
@@ -136,6 +138,7 @@
 		D3F4E955006792483AA853EE /* Art.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5680D20878E6FCEFF922A3D6 /* Art.swift */; };
 		D59A8E0A200E31168CCEC246 /* bg_mug_ground.png in Resources */ = {isa = PBXBuildFile; fileRef = 04285BF201458ADD7D0627ED /* bg_mug_ground.png */; };
 		D78797F1B2BE39B892E36EBE /* mon_dandelion_sprite.json in Resources */ = {isa = PBXBuildFile; fileRef = CB062FBEA45BAA1248C4FD81 /* mon_dandelion_sprite.json */; };
+		D8CB5133C2E22B2C822D92EF /* Sparkle.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC5950A4A08EF65372A409AA /* Sparkle.framework */; };
 		DA75B7995E5CD088B5F6D0F0 /* mon_cursor_ghost.png in Resources */ = {isa = PBXBuildFile; fileRef = DF663957B2872964E01AF940 /* mon_cursor_ghost.png */; };
 		E0EFA0D8DEA1A54A1FF2F082 /* trophies.json in Resources */ = {isa = PBXBuildFile; fileRef = E9D0859458E910B8A92CF26A /* trophies.json */; };
 		E2F0031F76029D4A168B50DE /* hero_warrior.png in Resources */ = {isa = PBXBuildFile; fileRef = AD177EEBBE0FDD5FF6C21CCF /* hero_warrior.png */; };
@@ -162,6 +165,20 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		01E64253A8E36DC9AD298883 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				8E48FD383763C656CBD904E4 /* Sparkle.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		00BCA1E988174A7018BA602D /* camp.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = camp.json; sourceTree = "<group>"; };
 		0338CBB7E6B3DA25C0A5400B /* mon_coffee_slime.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mon_coffee_slime.json; sourceTree = "<group>"; };
@@ -184,6 +201,7 @@
 		25CF6090D819A1AC36E17409 /* items_unique_b.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = items_unique_b.json; sourceTree = "<group>"; };
 		27D0566465A306589B246A54 /* DeskExpeditionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeskExpeditionApp.swift; sourceTree = "<group>"; };
 		27D9366F5271AD5C1F6F96B8 /* mon_paper_crane.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mon_paper_crane.png; sourceTree = "<group>"; };
+		29C62DC762B2C3DCDC9F88B4 /* Updater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Updater.swift; sourceTree = "<group>"; };
 		2A318F5E35EE40D02C20AF78 /* props2_monitor.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = props2_monitor.json; sourceTree = "<group>"; };
 		2CD3C449D5701CC3FFEBA2C7 /* bg_monitor_far.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = bg_monitor_far.png; sourceTree = "<group>"; };
 		2D2231D567C63532EF057D00 /* camp.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = camp.png; sourceTree = "<group>"; };
@@ -308,11 +326,31 @@
 		F67F18A209D291A158F2B929 /* items_unique_b.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = items_unique_b.png; sourceTree = "<group>"; };
 		FA5E089826230C38511A75DC /* bg_notebook_far.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = bg_notebook_far.png; sourceTree = "<group>"; };
 		FC27D2EE67DF75119591EB70 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		FC5950A4A08EF65372A409AA /* Sparkle.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Sparkle.framework; path = Vendor/Sparkle.framework; sourceTree = "<group>"; };
 		FD85242D3DAAA2F7CF576492 /* StripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StripView.swift; sourceTree = "<group>"; };
 		FEBB5A6C147A6A50EAC3B117 /* mon_coffee_slime.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mon_coffee_slime.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		16CC2A4B013586B7DC8FA206 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D8CB5133C2E22B2C822D92EF /* Sparkle.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
+		463A724A8D778604E71CCEA0 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				FC5950A4A08EF65372A409AA /* Sparkle.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		4AD235EA904EAA7FB1C78265 /* Game */ = {
 			isa = PBXGroup;
 			children = (
@@ -555,6 +593,7 @@
 				27D0566465A306589B246A54 /* DeskExpeditionApp.swift */,
 				C14E8594334DC8865C643CC1 /* Offscreen.swift */,
 				D6FDBD5CDBD08A11A235644F /* Snapshot.swift */,
+				29C62DC762B2C3DCDC9F88B4 /* Updater.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -566,6 +605,7 @@
 				C610F19C6730A46856EBFAC7 /* Resources */,
 				9A0DE4441CA56BE71177EF0D /* Sources */,
 				72293243773249AC0DD8CE72 /* Tests */,
+				463A724A8D778604E71CCEA0 /* Frameworks */,
 				7E8E11901A3570A2B51810FF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -579,6 +619,8 @@
 			buildPhases = (
 				07BCDE016A289BD3CD01E883 /* Sources */,
 				0D56D184125DC6C53E570DD7 /* Resources */,
+				16CC2A4B013586B7DC8FA206 /* Frameworks */,
+				01E64253A8E36DC9AD298883 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -811,6 +853,7 @@
 				F3EBB7EC7962A1FE08085B2A /* StripView.swift in Sources */,
 				BB2180FA2ECEB966550ABCBA /* StripWindowController.swift in Sources */,
 				571DC418DFFF760EAF483A70 /* Systems.swift in Sources */,
+				123CE4A2619B01351F21B72C /* Updater.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -843,6 +886,10 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"Vendor\"",
+				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -889,7 +936,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 16;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -908,7 +955,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.2.13;
+				MARKETING_VERSION = 0.2.14;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -929,6 +976,10 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"Vendor\"",
+				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -975,7 +1026,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 15;
+				CURRENT_PROJECT_VERSION = 16;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -988,7 +1039,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.2.13;
+				MARKETING_VERSION = 0.2.14;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1006,6 +1057,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
+				FRAMEWORK_SEARCH_PATHS = "$(inherited) $(PROJECT_DIR)/Vendor";
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1025,6 +1077,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
+				FRAMEWORK_SEARCH_PATHS = "$(inherited) $(PROJECT_DIR)/Vendor";
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

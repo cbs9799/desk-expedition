@@ -8,8 +8,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.2.13"
-    CURRENT_PROJECT_VERSION: "15"
+    MARKETING_VERSION: "0.2.14"
+    CURRENT_PROJECT_VERSION: "16"
 targets:
   DeskExpedition:
     type: application
@@ -29,17 +29,28 @@ targets:
         CFBundleDisplayName: 책상 원정대
         CFBundleName: 책상 원정대
         LSUIElement: true
+        SUFeedURL: https://github.com/cbs9799/desk-expedition/releases/latest/download/appcast.xml
+        SUPublicEDKey: SDd1KpNNtEJHI7breUl+h1PjH+37UScK9qStivaIsrI=
+        SUEnableInstallerLauncherService: true
+        SUScheduledCheckInterval: 21600
         CFBundleLocalizations: [ko, en]
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSApplicationCategoryType: public.app-category.role-playing-games
         NSHumanReadableCopyright: "© 2026 Lemongrove"
+    dependencies:
+      - framework: Vendor/Sparkle.framework
+        embed: true
     entitlements:
       path: Sources/DeskExpedition.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.server: true
         com.apple.security.network.client: true
+        # Sparkle 2 in a sandboxed app: talk to its installer/status XPC services.
+        com.apple.security.temporary-exception.mach-lookup.global-name:
+          - $(PRODUCT_BUNDLE_IDENTIFIER)-spks
+          - $(PRODUCT_BUNDLE_IDENTIFIER)-spki
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: club.lemongrove.deskexpedition
@@ -65,6 +76,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: club.lemongrove.deskexpedition.tests
+        FRAMEWORK_SEARCH_PATHS: $(inherited) $(PROJECT_DIR)/Vendor
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_STYLE: Manual

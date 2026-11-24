@@ -31,5 +31,13 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Lemongrove</string>
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/cbs9799/desk-expedition/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>SDd1KpNNtEJHI7breUl+h1PjH+37UScK9qStivaIsrI=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>21600</integer>
 </dict>
 </plist>

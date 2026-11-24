@@ -33,6 +33,7 @@ struct HQView: View {
                                 HeroCard(index: i, hero: hero, hp: store.battle.heroes[safe: i]?.hp ?? hero.maxHP)
                             }
                         }
+                        .fixedSize(horizontal: false, vertical: true)   // all cards take the tallest card's height
                         bag(p)
                     }
                 }
@@ -150,8 +151,9 @@ private struct HeroCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .bottom, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
                 HeroPortrait(heroClass: hero.heroClass, accessory: hero.accessory, scale: 2)
+                    .frame(width: 96, height: 104, alignment: .bottom)   // same box for every hero, hats or not
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         if staticRendering {
@@ -187,7 +189,7 @@ private struct HeroCard: View {
                     }
                     Text("\(hero.heroClass.skillName) — \(hero.heroClass.skillDescription)")
                         .font(.system(size: 10, design: .rounded)).foregroundStyle(Theme.dim)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(2, reservesSpace: true)   // same height whether it wraps or not
                 }
             }
             TraitRow(index: index, hero: hero)
@@ -220,6 +222,7 @@ private struct HeroCard: View {
                     .frame(maxWidth: .infinity)
                 }
             }
+            Spacer(minLength: 0)   // pin the level-up button to the bottom of equal-height cards
             Button {
                 store.levelUp(index)
             } label: {
@@ -229,7 +232,7 @@ private struct HeroCard: View {
             .disabled(store.progress.gold < hero.levelUpCost)
         }
         .padding(12)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(RoundedRectangle(cornerRadius: 14).fill(Theme.panel))
     }
 }

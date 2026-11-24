@@ -29,6 +29,12 @@ DEVELOPER_ID="${DEVELOPER_ID:-Developer ID Application: Beomseok Jang (E88HH6895
 NOTARY_PROFILE="${NOTARY_PROFILE:-weekwrap-notary}"
 
 NOTARIZE="${NOTARIZE:-1}"
+# SIGN_ONLY=1: Developer ID signing without notarization (local update tests).
+# BUNDLE_ID=…: build under another bundle id (keeps tests out of the real save container).
+SIGN_ONLY="${SIGN_ONLY:-0}"
+EXTRA=()
+[[ -n "${BUNDLE_ID:-}" ]] && EXTRA+=(PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID")
+[[ -n "${BUILD_NUMBER:-}" ]] && EXTRA+=(CURRENT_PROJECT_VERSION="$BUILD_NUMBER")
 if [[ "$NOTARIZE" == 1 && ( ! -f "$KC" || ! -f "$KC_PASS_FILE" ) ]]; then
   echo "==> 서명용 키체인이 없어 ad-hoc으로 빌드합니다 ($KC)"
   NOTARIZE=0
@@ -40,7 +46,7 @@ xcodegen generate >/dev/null
 xcodebuild -project "$APP_NAME.xcodeproj" -scheme "$APP_NAME" \
   -configuration Release -derivedDataPath "$DERIVED" \
   -destination 'generic/platform=macOS' \
-  MARKETING_VERSION="$VERSION" ONLY_ACTIVE_ARCH=NO \
+  MARKETING_VERSION="$VERSION" ONLY_ACTIVE_ARCH=NO ${EXTRA[@]+"${EXTRA[@]}"} \
   clean build | tail -3
 lipo -archs "$APP/Contents/MacOS/$APP_NAME"
 
@@ -53,14 +59,30 @@ rm -rf "$DIST" && mkdir -p "$DIST"
 ZIP="$DIST/$APP_NAME-$VERSION.zip"
 DMG="$DIST/$APP_NAME-$VERSION.dmg"
 
-if [[ "$NOTARIZE" == 1 ]]; then
+sign() { codesign --force --options runtime --timestamp --keychain "$KC" --sign "$DEVELOPER_ID" "$@"; }
+
+if [[ "$NOTARIZE" == 1 || "$SIGN_ONLY" == 1 ]]; then
   echo "==> Developer ID 서명: $DEVELOPER_ID"
   security unlock-keychain -p "$(cat "$KC_PASS_FILE")" "$KC"
-  # The app has no nested frameworks, so signing the bundle itself is enough.
-  codesign --force --options runtime --timestamp --entitlements "$ENTITLEMENTS" \
-    --keychain "$KC" --sign "$DEVELOPER_ID" "$APP"
-  codesign --verify --strict --verbose=2 "$APP"
+  # Nested code first, inside-out (Sparkle's helpers), then the app with its entitlements.
+  SP="$APP/Contents/Frameworks/Sparkle.framework"
+  if [[ -d "$SP" ]]; then
+    sign "$SP/Versions/B/XPCServices/Installer.xpc"
+    sign --preserve-metadata=entitlements "$SP/Versions/B/XPCServices/Downloader.xpc"
+    sign "$SP/Versions/B/Autoupdate"
+    sign "$SP/Versions/B/Updater.app"
+    sign "$SP"
+  fi
+  # The app's entitlements reference $(PRODUCT_BUNDLE_IDENTIFIER): use the processed copy from the build.
+  BUILT_ENT="$(mktemp -t ent).plist"
+  codesign -d --entitlements - --xml "$APP" > "$BUILT_ENT" 2>/dev/null || cp "$ENTITLEMENTS" "$BUILT_ENT"
+  # Xcode adds get-task-allow (debugging) when it signs locally; notarization rejects it.
+  /usr/libexec/PlistBuddy -c "Delete :com.apple.security.get-task-allow" "$BUILT_ENT" 2>/dev/null || true
+  sign --entitlements "$BUILT_ENT" "$APP"
+  codesign --verify --deep --strict --verbose=2 "$APP"
+fi
 
+if [[ "$NOTARIZE" == 1 ]]; then
   echo "==> 앱 공증 (몇 분 걸릴 수 있음)"
   ditto -c -k --keepParent "$APP" "$DIST/notarize.zip"
   notary "$DIST/notarize.zip"

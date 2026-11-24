@@ -59,6 +59,14 @@ struct MenuView: View {
                     store.settings.autoSell = on
                 }
                 ToggleRow(title: "효과음", isOn: store.settings.sound) { store.settings.sound.toggle() }
+                ToggleRow(title: "자동 업데이트 (설치 후 재시작)", isOn: store.settings.autoUpdate) { store.settings.autoUpdate.toggle() }
+                HStack {
+                    Text("버전 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-")")
+                        .font(.system(size: 10, design: .rounded)).foregroundStyle(Theme.dim)
+                    Spacer()
+                    Button("지금 확인") { Updater.shared.checkNow() }
+                        .buttonStyle(GameButtonStyle(color: Theme.panelHi, compact: true))
+                }
                 HStack {
                     Text("띠 크기").font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
                     Spacer()

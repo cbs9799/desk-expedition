@@ -25,6 +25,8 @@ struct StripSettings: Equatable {
     var themeOverride = -1
     /// Band size, 0.5…1.5 (1 = 920×100 pt).
     var stripScale = 1.0
+    /// Check, download, install and relaunch automatically when a new version is out.
+    var autoUpdate = true
     static let scaleRange = 0.5...1.5
 }
 
@@ -493,6 +495,7 @@ final class GameStore {
         }
         s.aiStyle = d.integer(forKey: "ai.style")
         s.themeOverride = d.object(forKey: "shop.theme") == nil ? -1 : d.integer(forKey: "shop.theme")
+        if d.object(forKey: "update.auto") != nil { s.autoUpdate = d.bool(forKey: "update.auto") }
         if d.object(forKey: "strip.scale") != nil {
             s.stripScale = min(StripSettings.scaleRange.upperBound, max(StripSettings.scaleRange.lowerBound, d.double(forKey: "strip.scale")))
         }
@@ -514,5 +517,6 @@ final class GameStore {
         d.set(settings.aiStyle, forKey: "ai.style")
         d.set(settings.themeOverride, forKey: "shop.theme")
         d.set(settings.stripScale, forKey: "strip.scale")
+        d.set(settings.autoUpdate, forKey: "update.auto")
     }
 }

@@ -70,6 +70,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let store = GameStore.shared
         store.start()
         CosmeticShop.shared.start()
+        Updater.shared.onBeforeInstall = { GameStore.shared.save() }
+        Updater.shared.start(auto: store.settings.autoUpdate)
         mcp = MCPServer(store: store)
         mcp?.start()
         strip = StripWindowController(store: store, onOpenHQ: { [weak self] in self?.openHQ() })

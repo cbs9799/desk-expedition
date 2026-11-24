@@ -14,17 +14,27 @@ git rev-parse "$TAG" >/dev/null 2>&1 && { echo "$TAG 태그가 이미 있습니�
 
 echo "==> 테스트"
 xcodegen generate >/dev/null
-xcodebuild -project DeskExpedition.xcodeproj -scheme DeskExpedition -derivedDataPath build/test test 2>&1 | grep -E "Executed|error:" | tail -2
+xcodebuild -project DeskExpedition.xcodeproj -scheme DeskExpedition -derivedDataPath build/test test > build/test.log 2>&1 \
+  || { grep -E "error:|failed" build/test.log | head -20; echo "테스트 실패 — 릴리스 중단"; exit 1; }
+grep -E "Executed" build/test.log | tail -1
 
 scripts/package.sh "$VERSION"
 grep -q . dist/SHA256SUMS.txt
 spctl --assess --type open --context context:primary-signature dist/*.dmg   # 공증 안 된 결과물은 올리지 않음
 
+echo "==> 자동 업데이트 피드(appcast.xml, EdDSA 서명)"
+FEED="$(mktemp -d)"
+cp dist/*.zip "$FEED/"
+Vendor/sparkle-bin/generate_appcast --ed-key-file "$HOME/.signing/sparkle_ed25519" \
+  --download-url-prefix "https://github.com/cbs9799/desk-expedition/releases/download/$TAG/" \
+  -o dist/appcast.xml "$FEED" | tail -1
+grep -q "sparkle:edSignature" dist/appcast.xml
+
 echo "==> 태그·릴리스 $TAG"
 git push -q origin HEAD
 git tag "$TAG"
 git push -q origin "$TAG"
-gh release create "$TAG" dist/*.dmg dist/*.zip dist/SHA256SUMS.txt \
+gh release create "$TAG" dist/*.dmg dist/*.zip dist/SHA256SUMS.txt dist/appcast.xml \
   --title "책상 원정대 $TAG" --notes-file .github/release-notes.md
 
 echo "==> 내려받아 검증"
@@ -34,4 +44,7 @@ gh release download "$TAG" -D "$TMP"
 xcrun stapler validate "$TMP"/*.dmg
 ditto -x -k "$TMP"/*.zip "$TMP/x"
 spctl --assess --type execute --verbose=2 "$TMP/x/DeskExpedition.app"
+# The feed every installed copy polls must now resolve to this release.
+curl -sL "https://github.com/cbs9799/desk-expedition/releases/latest/download/appcast.xml" | grep -q "<sparkle:shortVersionString>$VERSION<" \
+  && echo "==> 자동 업데이트 피드가 $VERSION을 가리킴" || echo "!! 최신 피드 확인 실패"
 echo "==> 완료: $(gh release view "$TAG" --json url --jq .url)"
