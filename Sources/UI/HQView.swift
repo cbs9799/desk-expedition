@@ -45,6 +45,7 @@ struct HQView: View {
                minHeight: HQLayout.min.height, idealHeight: HQLayout.ideal.height, maxHeight: .infinity, alignment: .top)
         .background(Theme.bg)
         .foregroundStyle(Theme.text)
+        .environment(\.colorScheme, .dark)
         .overlay {
             if showOnboarding && !hqStatic {
                 ZStack {
@@ -117,11 +118,10 @@ struct HQView: View {
                 Button("최적 장착") { store.autoEquip() }.buttonStyle(GameButtonStyle(color: Color(hex: 0x3BA55C), compact: true))
                 Button("일반 일괄 판매") { store.bulkSell(upTo: .common) }.buttonStyle(GameButtonStyle(color: Color(hex: 0x8A6D3B), compact: true))
                 BulkSellMenu {
-                    Text("일괄 판매 ▾").font(.system(size: 12, weight: .heavy, design: .rounded))
-                        .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(Color(hex: 0xB0623B)))
-                        .foregroundStyle(.white)
+                    Text("일괄 판매 ▾").font(.system(size: 11, weight: .bold, design: .rounded))
                 }
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(RoundedRectangle(cornerRadius: 7).fill(Color(hex: 0xB0623B)))
             }
             HStack(alignment: .top, spacing: 14) {
                 LazyVGrid(columns: Array(repeating: GridItem(.fixed(46), spacing: 6), count: 8), spacing: 6) {
@@ -162,6 +162,7 @@ private struct HeroCard: View {
                             set: { store.rename(index, to: $0) }))
                             .textFieldStyle(.plain)
                             .font(.system(size: 16, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Theme.text)
                             .frame(maxWidth: 90)
                             .help("이름을 눌러 바꿀 수 있어요")
                         }
@@ -180,6 +181,8 @@ private struct HeroCard: View {
                     }
                     .pickerStyle(.menu)
                     .controlSize(.small)
+                    .foregroundStyle(Theme.text)
+                    .tint(Theme.gold)
                     .frame(maxWidth: 140)
                     }
                     Text("\(hero.heroClass.skillName) — \(hero.heroClass.skillDescription)")

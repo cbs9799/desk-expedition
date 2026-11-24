@@ -141,6 +141,25 @@ enum Snapshot {
         print("hq written: \(target.path)")
     }
 
+    /// `--hq-live W H <out.png>`: renders the real HQ window (AppKit text fields, pickers, menus included)
+    /// offscreen via NSView caching — checks colors/contrast of system controls.
+    static func renderHQLive(width: CGFloat, height: CGFloat, to url: URL) {
+        let store = demoStore()
+        let hq = HQWindowController(store: store)
+        hq.show()
+        guard let w = hq.hqWindow, let view = w.contentView else { return }
+        w.setContentSize(NSSize(width: width, height: height))
+        w.orderBack(nil)
+        view.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        guard let frameView = view.superview, let rep = frameView.bitmapImageRepForCachingDisplay(in: frameView.bounds) else { return }
+        frameView.cacheDisplay(in: frameView.bounds, to: rep)
+        let png = rep.representation(using: .png, properties: [:])
+        let target = (try? png?.write(to: url)) != nil ? url : FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
+        try? png?.write(to: target)
+        print("hq-live written: \(target.path)")
+    }
+
     /// `--frames <dir>`: dumps 0.1 s strip frames for eyeballing animation.
     static func dumpFrames(to dir: URL, seconds: Double = 12, showcase: Bool = false) {
         let store = demoStore()

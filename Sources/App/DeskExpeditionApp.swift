@@ -18,6 +18,7 @@ struct DeskExpeditionApp: App {
         MenuBarExtra {
             MenuView(onOpenHQ: { delegate.openHQ() })
                 .environment(GameStore.shared)
+                .preferredColorScheme(.dark)
         } label: {
             Image(systemName: "shield.lefthalf.filled")
         }
@@ -35,6 +36,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let args = ProcessInfo.processInfo.arguments
         if let i = args.firstIndex(of: "--snapshot"), args.indices.contains(i + 1) {
             Snapshot.render(to: URL(fileURLWithPath: args[i + 1]))
+            NSApp.terminate(nil)
+            return
+        }
+        if let i = args.firstIndex(of: "--hq-live"), args.indices.contains(i + 3),
+           let w = Double(args[i + 1]), let h = Double(args[i + 2]) {
+            Snapshot.renderHQLive(width: w, height: h, to: URL(fileURLWithPath: args[i + 3]))
             NSApp.terminate(nil)
             return
         }

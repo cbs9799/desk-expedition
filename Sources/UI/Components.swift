@@ -19,12 +19,17 @@ struct GameButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: compact ? 11 : 12, weight: .bold, design: .rounded))
-            .foregroundStyle(.white.opacity(enabled ? 1 : 0.45))
+            // Disabled stays readable: muted text on a faint tint of the button's own color.
+            .foregroundStyle(.white.opacity(enabled ? 1 : 0.72))
             .padding(.horizontal, compact ? 8 : 12)
             .padding(.vertical, compact ? 4 : 6)
             .background(
                 RoundedRectangle(cornerRadius: 7)
-                    .fill(enabled ? color.opacity(configuration.isPressed ? 0.7 : 1) : Color.white.opacity(0.1))
+                    .fill(enabled ? color.opacity(configuration.isPressed ? 0.7 : 1) : color.opacity(0.28))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(enabled ? Color.clear : color.opacity(0.45), lineWidth: 1)
             )
             .contentShape(Rectangle())
     }

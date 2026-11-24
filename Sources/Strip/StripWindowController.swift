@@ -19,6 +19,7 @@ final class StripWindowController {
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         panel.isMovable = false
         panel.hidesOnDeactivate = false
+        panel.appearance = NSAppearance(named: .darkAqua)
         panel.contentView = NSHostingView(rootView: StripView(onOpenHQ: onOpenHQ).environment(store))
 
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
@@ -112,6 +113,7 @@ final class HQWindowController {
                              backing: .buffered, defer: false)
             w.title = L10n.t("원정 본부")
             w.titlebarAppearsTransparent = true
+            w.appearance = NSAppearance(named: .darkAqua)   // the HQ is a dark UI: keep title & controls light-on-dark
             w.isReleasedWhenClosed = false
             let host = NSHostingView(rootView: HQView().environment(store))
             host.sizingOptions = [.minSize]          // let the window grow beyond the view's ideal size
@@ -125,6 +127,8 @@ final class HQWindowController {
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+        // Don't drop the player straight into editing the first hero's name.
+        DispatchQueue.main.async { [weak self] in self?.window?.makeFirstResponder(nil) }
     }
 }
 

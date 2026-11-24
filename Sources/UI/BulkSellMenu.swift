@@ -42,6 +42,7 @@ struct BulkSellMenu<Label: View>: View {
             } label: { label() }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
+            .foregroundStyle(.white)
             .fixedSize()
             .alert(L10n.t("희귀·전설 장비도 팔까요?"), isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } })) {
                 Button(L10n.t("판매"), role: .destructive) { if let r = confirm { store.bulkSell(upTo: r) }; confirm = nil }
