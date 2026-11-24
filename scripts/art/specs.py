@@ -239,3 +239,27 @@ def all_specs():
     for key, layout in ITEM_SHEETS.items():
         specs[key] = f"Image: {ICON_STYLE}\n\nLayout: {layout}"
     return specs
+
+
+# --- v0.2.7: companions that follow the party --------------------------------------------------
+PETS = (
+    "Image: " + STYLE + "\n\nThree different tiny cute companion pets for desk-miniature adventurers, side view facing RIGHT, "
+    "each about half the height of a chibi hero. Layout: 3 rows, 4 frames per row: row 1: an orange tabby kitten walking "
+    "(4 frames), row 2: a round hamster in a tiny backpack walking (4 frames), row 3: a small blue bird flying (4 frames)."
+)
+CARAVAN = (
+    "Image: A row of 6 separate 2D pixel-art camp objects for a cute side-scrolling idle game, late-1990s 32-bit console "
+    "style (crisp chunky pixels, 1px dark outline, saturated colors, NO anti-aliasing). Solid flat pure magenta (#FF00FF) "
+    "background, evenly spaced, not touching, standing on an invisible ground line, no text. In order: a small wooden "
+    "handcart full of loot pulled behind adventurers, a little patched tent, a campfire with a cooking pot, a banner flag "
+    "on a pole, a treasure chest, a signpost with a tiny lantern."
+)
+
+_v026_all_specs = all_specs
+
+
+def all_specs():
+    specs = _v026_all_specs()
+    specs["pets"] = PETS
+    specs["camp"] = CARAVAN
+    return specs

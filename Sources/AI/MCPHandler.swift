@@ -82,9 +82,12 @@ final class MCPHandler {
 
     static let playPrompt = """
     책상 원정대를 돌봐 줘. 순서:
+    0. get_status의 captainStyle(사용자가 고른 대장 성향)을 모든 판단의 기준으로 삼아.
     1. get_status로 현재 상황(골드, 영웅 레벨·체력·공격력, 가방, 지역·웨이브, 최근 사건)을 확인해.
     2. 가방에 업그레이드가 있으면 auto_equip.
     3. 골드로 레벨업: 가장 싼 영웅부터, 셋의 레벨 차이가 5 이상 벌어지지 않게. 전멸(wipes)이 잦으면 전사 체력 위주로.
+    3-1. 특성(pendingTrait)이 열렸으면 captainStyle에 맞게 choose_trait. 전술(set_tactic)도 성향에 맞게.
+    3-2. 도감 조각이 30개 이상이면 exchange_shards로 약한 쪽 장비를 전설로.
     4. 가방이 18칸 넘으면 sell_all로 일반(필요하면 고급)까지 정리. 업그레이드 장비는 자동으로 남아.
     5. 보스에서 계속 전멸하면 한 단계 앞 지역에서 골드를 모으고, 새 지역이 열려 있고 여유가 있으면 가장 먼 지역으로.
     6. 서랍 심층이 열렸고 최고층이 한동안 오르지 않으면 move_desk로 이사(추억 조각 영구 보너스)를 고려해.
@@ -134,6 +137,14 @@ enum MCPTools {
             tool("set_accessory", "영웅 머리 꾸미기(0 없음, 1 리본, 2 왕관, 3 꽃, 4 고깔, 5 새싹, 6 별).",
                  ["hero": heroProp, "accessory": ["type": "integer", "minimum": 0, "maximum": Accessory.all.count - 1],
                   "reason": reasonProp], required: ["hero", "accessory"]),
+            tool("choose_trait", "영웅 특성 고르기(Lv10·25·50에 열림, 둘 중 하나). get_status의 heroes[].pendingTrait를 보세요.",
+                 ["hero": heroProp, "option": ["type": "integer", "minimum": 0, "maximum": 1], "reason": reasonProp],
+                 required: ["hero", "option"]),
+            tool("set_tactic", "원정 전술: balanced(균형) charge(돌격: 공격↑ 위험↑) careful(신중: 피해↓) treasure(보물 찾기: 골드·드롭↑ 공격↓).",
+                 ["tactic": ["type": "string", "enum": ["balanced", "charge", "careful", "treasure"]], "reason": reasonProp],
+                 required: ["tactic"]),
+            tool("exchange_shards", "도감 조각 \(Pity.legendaryPrice)개로 전설 장비(무기/방어구) 하나와 교환.",
+                 ["slot": ["type": "string", "enum": ["weapon", "armor"]], "reason": reasonProp], required: ["slot"]),
             tool("say", "띠에 짧은 한마디 남기기(행동 없이 사용자에게 알릴 때).",
                  ["message": ["type": "string", "maxLength": 60]], required: ["message"]),
         ]
@@ -244,6 +255,29 @@ enum MCPTools {
             store.aiAct("\(store.progress.heroes[h].displayName) 꾸미기: \(Accessory.all[acc])", reason: reason)
             return ["hero": h, "accessory": Accessory.all[acc]]
 
+        case "choose_trait":
+            let h = try hero()
+            guard let tier = store.progress.heroes[h].pendingTraitTier else { throw MCPToolError(message: "고를 특성이 없어요") }
+            guard let opt = int(a["option"]), (0...1).contains(opt) else { throw MCPToolError(message: "option은 0 또는 1") }
+            store.chooseTrait(h, tier: tier, option: opt)
+            let (x, y) = Traits.options(store.progress.heroes[h].heroClass, tier: tier)
+            store.aiAct("\(store.progress.heroes[h].displayName) 특성 \((opt == 0 ? x : y).name)", reason: reason)
+            return ["hero": h, "traits": store.progress.heroes[h].chosenTraitNames]
+
+        case "set_tactic":
+            let map: [String: Tactic] = ["balanced": .balanced, "charge": .charge, "careful": .careful, "treasure": .treasure]
+            guard let t = map[a["tactic"] as? String ?? ""] else { throw MCPToolError(message: "tactic 값이 잘못됐어요") }
+            store.setTactic(t)
+            store.aiAct("전술 \(t.icon) \(t.name)", reason: reason)
+            return ["tactic": "\(t)", "effect": t.desc]
+
+        case "exchange_shards":
+            let slot: GearSlot = (a["slot"] as? String) == "armor" ? .armor : .weapon
+            guard store.progress.shards >= Pity.legendaryPrice else { throw MCPToolError(message: "조각이 모자라요 (\(store.progress.shards)/\(Pity.legendaryPrice))") }
+            guard let it = store.exchangeShards(slot: slot) else { throw MCPToolError(message: "가방이 가득 찼어요") }
+            store.aiAct("조각 교환 → \(it.name)", reason: reason)
+            return ["item": it.name, "id": it.id.uuidString, "shardsLeft": store.progress.shards]
+
         case "say":
             let m = String((a["message"] as? String ?? "").prefix(60))
             guard !m.isEmpty else { throw MCPToolError(message: "message가 비었어요") }
@@ -267,7 +301,11 @@ enum MCPTools {
         return ["index": i, "class": h.heroClass.rawValue, "name": h.displayName, "level": h.level,
                 "hp": Int(max(0, hp)), "maxHP": Int(h.maxHP), "attack": Int(h.attack * Move.bonus(store.progress)),
                 "levelUpCost": h.levelUpCost, "weapon": gear(h.weapon), "armor": gear(h.armor),
-                "accessory": Accessory.all[h.accessory ?? 0]]
+                "accessory": Accessory.all[h.accessory ?? 0], "traits": h.chosenTraitNames,
+                "pendingTrait": h.pendingTraitTier.map { tier -> Any in
+                    let (x, y) = Traits.options(h.heroClass, tier: tier)
+                    return ["tier": Traits.tiers[tier], "option0": "\(x.name): \(x.desc)", "option1": "\(y.name): \(y.desc)"]
+                } ?? NSNull()]
     }
 
     static func status(_ store: GameStore) -> [String: Any] {
@@ -288,6 +326,13 @@ enum MCPTools {
             "move": ["memories": p.memories, "moves": p.moves, "canMove": Move.canMove(p),
                      "gainIfMovedNow": Move.canMove(p) ? Move.gain(p) : 0, "bonusPercent": p.memories * 5],
             "recentEvents": store.events.suffix(12).map { ["at": iso($0.date), "text": $0.text] },
+            "tactic": ["current": "\(p.tactic)", "effect": p.tactic.desc],
+            "weekly": ["rule": WeeklyRule.current().name, "effect": WeeklyRule.current().desc,
+                       "kills": p.weekKey == WeeklyRule.weekKey() ? p.weekKills : 0, "goal": WeeklyRule.goalKills, "claimed": p.weekClaimed],
+            "shards": ["count": p.shards, "legendaryPrice": Pity.legendaryPrice,
+                       "shinyPity": "\(p.shinyPity)/\(Pity.shinySpawns)", "legendaryPity": "\(p.legendaryPity)/\(Pity.legendaryDrops)"],
+            "captainStyle": ["name": AIStyle(rawValue: store.settings.aiStyle)?.name ?? "안정형",
+                             "guide": AIStyle(rawValue: store.settings.aiStyle)?.guide ?? ""],
         ]
     }
 

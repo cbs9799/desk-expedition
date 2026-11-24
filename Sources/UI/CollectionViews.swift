@@ -115,6 +115,20 @@ struct JournalView: View {
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
+                    if !p.aiDiary.isEmpty {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("🤖 대장 일지").font(.system(size: 13, weight: .heavy, design: .rounded))
+                            ForEach(p.aiDiary.suffix(8).reversed()) { e in
+                                HStack(alignment: .top) {
+                                    Text(e.date.formatted(date: .omitted, time: .shortened))
+                                        .font(.system(size: 10, design: .rounded)).foregroundStyle(Theme.dim)
+                                    Text(e.text).font(.system(size: 11, design: .rounded)).foregroundStyle(Color(hex: 0x9CF4FF))
+                                }
+                            }
+                        }
+                        .padding(10)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Color(hex: 0x1F3340)))
+                    }
                     ForEach(p.journal.reversed()) { page in
                         let e = Journal.text(page.id, names: names)
                         VStack(alignment: .leading, spacing: 4) {
@@ -155,6 +169,46 @@ struct RecordsView: View {
                 stat("이사", "\(p.moves)회", "지금: \(DeskTheme.names[p.theme])")
                 stat("이름 있는 전설", "\(p.uniquesFound.count)/\(Unique.names.count)", "전설 장비의 35%는 이름이 새겨져 있어요")
             }
+            HStack(alignment: .top, spacing: 12) {
+                let week = WeeklyRule.current()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("📅 이번 주: \(week.name)").font(.system(size: 13, weight: .heavy, design: .rounded))
+                    Text(week.desc).font(.system(size: 11, design: .rounded)).foregroundStyle(Theme.dim)
+                    let kills = p.weekKey == WeeklyRule.weekKey() ? p.weekKills : 0
+                    Text(p.weekClaimed ? "주간 목표 달성 ✓ (추억 조각 +1)" : "주간 목표: \(min(kills, WeeklyRule.goalKills))/\(WeeklyRule.goalKills)마리 → 추억 조각 +1")
+                        .font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(Theme.gold)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("🧩 도감 조각 \(p.shards)").font(.system(size: 13, weight: .heavy, design: .rounded))
+                    Text("이미 만난 반짝이(3)·왕관(1)·희귀 손님(2)을 또 만나면 쌓여요. 반짝이 천장 \(p.shinyPity)/\(Pity.shinySpawns) · 전설 천장 \(p.legendaryPity)/\(Pity.legendaryDrops)")
+                        .font(.system(size: 10, design: .rounded)).foregroundStyle(Theme.dim)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 4) {
+                        ForEach(GearSlot.allCases, id: \.self) { slot in
+                            Button("\(Pity.legendaryPrice)개 → 전설 \(slot.name)") { store.exchangeShards(slot: slot) }
+                                .buttonStyle(GameButtonStyle(color: Color(hex: 0x8A6D3B), compact: true))
+                                .disabled(p.shards < Pity.legendaryPrice || p.bagIsFull)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("🐾 동행").font(.system(size: 13, weight: .heavy, design: .rounded))
+                    ForEach(Companion.allCases, id: \.self) { c in
+                        Text(c.unlocked(p) ? "✓ \(c.name)" : "· \(c.name) — \(c.unlockText)")
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .foregroundStyle(c.unlocked(p) ? Color(hex: 0x9CFF9C) : Theme.dim)
+                    }
+                    Text(Camp.hasCart(p) ? "✓ 전리품 수레" : "· 전리품 수레 — 보스 3회")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Camp.hasCart(p) ? Color(hex: 0x9CFF9C) : Theme.dim)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 14).fill(Theme.panel))
+
             VStack(alignment: .leading, spacing: 8) {
                 Text("트로피 진열장").font(.system(size: 14, weight: .heavy, design: .rounded))
                 Text("모은 트로피는 원정 띠의 풍경 속에 반짝이며 지나가요.")

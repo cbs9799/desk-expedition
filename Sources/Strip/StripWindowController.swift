@@ -29,6 +29,19 @@ final class StripWindowController {
                                                object: panel, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.updatePowerMode() }
         }
+        let ws = NSWorkspace.shared.notificationCenter
+        ws.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.store.willSleep() }
+        }
+        for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification,
+                     NSWorkspace.activeSpaceDidChangeNotification] {
+            ws.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                MainActor.assumeIsolated {
+                    if note.name == NSWorkspace.didWakeNotification { self?.store.didWake() }
+                    self?.apply()
+                }
+            }
+        }
         store.onSettingsChanged = { [weak self] in self?.apply() }
         apply()
     }
@@ -55,8 +68,11 @@ final class StripWindowController {
             RunLoop.main.add(t, forMode: .common)
             hoverTimer = t
         }
+        panel.sharingType = s.hideInCapture ? .none : .readOnly
         let screens = NSScreen.screens
-        let screen = screens.indices.contains(s.screenIndex) ? screens[s.screenIndex] : (NSScreen.main ?? screens.first)
+        // Prefer the remembered display (stable across unplug/replug), then the index, then the main screen.
+        let byID = screens.first { $0.displayID == s.displayID && s.displayID != 0 }
+        let screen = byID ?? (screens.indices.contains(s.screenIndex) ? screens[s.screenIndex] : (NSScreen.main ?? screens.first))
         if let screen {
             let vf = screen.visibleFrame
             let w = min(StripLayout.width, vf.width - 16)
@@ -99,5 +115,11 @@ final class HQWindowController {
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+}
+
+extension NSScreen {
+    var displayID: UInt32 {
+        (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0
     }
 }

@@ -19,6 +19,13 @@ enum Snapshot {
         p.heroes[2].weapon = Item(slot: .weapon, rarity: .legendary, name: "공책 크레용 지팡이", power: 11, regionIndex: 0)
         p.heroes[1].accessory = 4
         p.heroes[2].accessory = 2
+        for sp in Species.all.prefix(12) { p.dex[Dex.key(sp.id, .normal)] = DexEntry(count: 3, first: Date()) }
+        p.trophies = [0, 1, 2]
+        p.moves = 1
+        p.memories = 4
+        p.bossKills = 5
+        p.shards = 18
+        p.heroes[2].weapon?.rarity = .legendary
         for _ in 0..<13 { p.bag.append(Engine.makeItem(region: Int.random(in: 0...1, using: &rng), boss: false, rng: &rng)) }
         p.bag.append(Engine.makeItem(region: 1, boss: true, rng: &rng))
         p.gold = 4_830
@@ -77,6 +84,42 @@ enum Snapshot {
             if t % 200 == 0 { _ = off.image() }
         }
         print("soak ok: \(Int(seconds))s simulated, wipes \(wipes), bosses \(bosses), kills \(store.progress.totalKills)")
+    }
+
+    /// `--bench <seconds>`: runs the live strip scene in real time at 60 fps offscreen (engine at 10 Hz) and reports
+    /// CPU time, average CPU %, and memory footprint — the numbers published in docs/PERFORMANCE.md.
+    static func bench(seconds: Double, fps: Double = 60) {
+        let store = demoStore()
+        guard let off = StripOffscreen(store: store) else { print("bench: no Metal"); return }
+        func cpu() -> Double {
+            var u = rusage(); getrusage(RUSAGE_SELF, &u)
+            return Double(u.ru_utime.tv_sec + u.ru_stime.tv_sec) + Double(u.ru_utime.tv_usec + u.ru_stime.tv_usec) / 1e6
+        }
+        func footprintMB() -> Double {
+            var info = task_vm_info_data_t()
+            var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+            let kr = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count) }
+            }
+            return kr == KERN_SUCCESS ? Double(info.phys_footprint) / 1_048_576 : 0
+        }
+        // warm up
+        for _ in 0..<60 { off.step(1.0 / 60); _ = off.image() }
+        let c0 = cpu(), t0 = Date(), m0 = footprintMB()
+        var frame = 0, peak = m0
+        while Date().timeIntervalSince(t0) < seconds {
+            let target = t0.addingTimeInterval(Double(frame) / fps)
+            if frame % Int(fps / 10) == 0 { store.step(dt: 0.1) }
+            off.step(1.0 / fps)
+            _ = off.renderOnly()
+            frame += 1
+            if frame % 600 == 0 { peak = max(peak, footprintMB()) }
+            let wait = target.timeIntervalSinceNow
+            if wait > 0 { Thread.sleep(forTimeInterval: wait) }
+        }
+        let wall = Date().timeIntervalSince(t0), used = cpu() - c0
+        print(String(format: "bench@%.0ffps: %.0fs wall, %d frames (%.1f fps), CPU %.2fs = %.1f%% of one core, memory %.0f→%.0f MB (peak %.0f)",
+                     fps, wall, frame, Double(frame) / wall, used, used / wall * 100, m0, footprintMB(), max(peak, footprintMB())))
     }
 
     /// `--frames <dir>`: dumps 0.1 s strip frames for eyeballing animation.

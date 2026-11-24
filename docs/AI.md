@@ -37,7 +37,12 @@ bash "/Applications/DeskExpedition.app/Contents/Resources/ai-autoplay.sh" uninst
 | `select_region` | 열린 지역으로 이동(5 = 서랍 심층) |
 | `move_desk` | 이사(환생), `confirm: true` 필요 |
 | `set_nickname`, `set_accessory` | 이름·꾸미기 (사용자가 원할 때만) |
+| `choose_trait` | 영웅 특성 고르기 (Lv10·25·50) |
+| `set_tactic` | 원정 전술 (균형·돌격·신중·보물 찾기) |
+| `exchange_shards` | 도감 조각 30개 → 전설 장비 |
 | `say` | 띠에 한마디 |
+
+**원정대장 성향**: 메뉴 "AI 원정대장"에서 안정형·공격형·수집형을 고르면 `get_status`의 `captainStyle`로 AI에게 전달되고, AI는 이를 판단 기준으로 씁니다. AI가 한 일은 일지의 "대장 일지"에 남고, 본부를 열면 "AI 원정대장이 한 일" 요약이 뜹니다.
 
 모든 행동 도구는 `reason`(짧은 한국어 이유)을 받아 띠에 보여 줍니다.
 

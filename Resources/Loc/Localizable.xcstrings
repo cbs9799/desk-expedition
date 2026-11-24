@@ -1,0 +1,1227 @@
+{
+  "sourceLanguage": "ko",
+  "strings": {
+    "": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ""
+          }
+        }
+      }
+    },
+    "%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@"
+          }
+        }
+      }
+    },
+    "%@ %@ · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %@ · %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ %2$@ · %3$@"
+          }
+        }
+      }
+    },
+    "%@ %@ · 📅 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %@ · 📅 %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ %2$@ · 📅 %3$@"
+          }
+        }
+      }
+    },
+    "%@ Lv.%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Lv.%lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ Lv.%2$lld"
+          }
+        }
+      }
+    },
+    "%@ · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %@보스전": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@Boss"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ · %2$@보스전"
+          }
+        }
+      }
+    },
+    "%@ — %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ — %2$@"
+          }
+        }
+      }
+    },
+    "%@ ▾": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ▾"
+          }
+        }
+      }
+    },
+    "%@ 레벨업 (🪙 %lld)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Level up %@ (🪙 %lld)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ 레벨업 (🪙 %2$lld)"
+          }
+        }
+      }
+    },
+    "%@%@ %@ — %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%@ %@ — %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@%2$@ %3$@ — %4$@"
+          }
+        }
+      }
+    },
+    "%@에게 장착": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equip on %@"
+          }
+        }
+      }
+    },
+    "%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld"
+          }
+        }
+      }
+    },
+    "%lld (추억 +%lld%%)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld (Memories +%lld%%)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld (추억 +%2$lld%%)"
+          }
+        }
+      }
+    },
+    "%lld/%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld/%lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "%lld/%lld장": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld/%lld pages"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld/%2$lld장"
+          }
+        }
+      }
+    },
+    "%lld개 → 전설 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld → Legendary %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld개 → 전설 %2$@"
+          }
+        }
+      }
+    },
+    "%lld번 만남": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Met %lld times"
+          }
+        }
+      }
+    },
+    "%lld웨이브로 이동": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go to wave %lld"
+          }
+        }
+      }
+    },
+    "+%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld"
+          }
+        }
+      }
+    },
+    "11월 24일 (화) 오후 2:41": {},
+    "AI 원정대장": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI Captain"
+          }
+        }
+      }
+    },
+    "AI 원정대장이 한 일 %lld개": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld things your AI captain did"
+          }
+        }
+      }
+    },
+    "Finder": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finder"
+          }
+        }
+      }
+    },
+    "Lv. %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lv. %lld"
+          }
+        }
+      }
+    },
+    "· %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· %@"
+          }
+        }
+      }
+    },
+    "· %@ — %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· %@ — %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "· %1$@ — %2$@"
+          }
+        }
+      }
+    },
+    "· 전리품 수레 — 보스 3회": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· Loot cart — 3 boss kills"
+          }
+        }
+      }
+    },
+    "▲%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "▲%@"
+          }
+        }
+      }
+    },
+    "★": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "★"
+          }
+        }
+      }
+    },
+    "★ Lv.%lld 특성 고르기": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "★ Choose a Lv.%lld trait"
+          }
+        }
+      }
+    },
+    "★ Lv.%lld 특성을 골라 주세요": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "★ Pick a Lv.%lld trait"
+          }
+        }
+      }
+    },
+    "✓ %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ %@"
+          }
+        }
+      }
+    },
+    "✓ 전리품 수레": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "✓ Loot cart"
+          }
+        }
+      }
+    },
+    "가방": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bag"
+          }
+        }
+      }
+    },
+    "고급 이하 판매": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sell ≤ Uncommon"
+          }
+        }
+      }
+    },
+    "골드가 모자라요": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not enough gold"
+          }
+        }
+      }
+    },
+    "공격력": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attack"
+          }
+        }
+      }
+    },
+    "구독 중인 AI(Claude·Codex 등)에 연결하면 AI가 레벨업·장비·가방·지역·이사를 알아서 해요. 아래 설정을 AI 앱에 붙여 넣고, AI에게 \"책상 원정대 돌봐 줘\"라고 하세요.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect the AI you already subscribe to (Claude, Codex…) and it handles leveling, gear, the bag, regions and moving for you. Paste a setup below into your AI app, then ask it to \"take care of Desk Expedition\"."
+          }
+        }
+      }
+    },
+    "기록": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Records"
+          }
+        }
+      }
+    },
+    "꾸미기": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Style"
+          }
+        }
+      }
+    },
+    "꾸미기: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Style: %@"
+          }
+        }
+      }
+    },
+    "다음": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next"
+          }
+        }
+      }
+    },
+    "대기 중": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idle"
+          }
+        }
+      }
+    },
+    "도감 %lld/%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dex %lld/%lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "도감 %1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "띠 오른쪽에 마우스를 올리면 바로 조작할 수 있어요: 지역 이름 ▾로 지역 이동, 웨이브 보석으로 웨이브 선택, 영웅 칩으로 레벨업, ⚖️로 전술. ★가 뜨면 특성을 고를 차례예요. 장비는 자동 정리가 알아서 해요.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hover the right side of the band to play: region name ▾ to travel, wave gems to pick a wave, hero chips to level up, ⚖️ for tactics. A ★ means a trait is ready. Auto-tidy handles gear."
+          }
+        }
+      }
+    },
+    "띠를 두 번 클릭해도 본부가 열려요 (클릭 통과를 끈 경우)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Double-click the band to open HQ (when click-through is off)"
+          }
+        }
+      }
+    },
+    "레벨·장비·골드·지역이 처음으로 돌아가는 대신 추억 조각을 얻어요. 조각 하나당 공격력과 골드가 영구히 +5%. 도감·일지·트로피·이름·꾸미기는 그대로 가져가요.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Levels, gear, gold and regions reset, and you earn Memory shards instead. Each shard is a permanent +5% attack and gold. Dex, journal, trophies, names and styles come with you."
+          }
+        }
+      }
+    },
+    "레벨·장비·골드·지역이 초기화되고 추억 조각 %lld개를 얻어요.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Levels, gear, gold and regions reset and you get %lld Memory shards."
+          }
+        }
+      }
+    },
+    "레벨업  🪙 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Level up  🪙 %@"
+          }
+        }
+      }
+    },
+    "레벨업 (🪙 %lld)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Level up (🪙 %lld)"
+          }
+        }
+      }
+    },
+    "모니터": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Display"
+          }
+        }
+      }
+    },
+    "모으고, 남기고, 맡기고": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collect, chronicle, delegate"
+          }
+        }
+      }
+    },
+    "모은 트로피는 원정 띠의 풍경 속에 반짝이며 지나가요.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your trophies sparkle along the road in the band."
+          }
+        }
+      }
+    },
+    "반짝이·왕관 몬스터와 희귀 손님을 도감에 모으고, 일지를 읽고, 트로피와 동행 펫을 늘려 보세요. 구독 중인 AI(Claude·Codex)를 메뉴바의 'AI 원정대장'에 연결하면 AI가 대신 돌봐 줘요.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill the dex with Shiny and Crowned monsters and rare guests, read the journal, and grow your trophies and companions. Connect your AI (Claude, Codex) under 'AI Captain' in the menu bar and it will look after the party for you."
+          }
+        }
+      }
+    },
+    "보기": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View"
+          }
+        }
+      }
+    },
+    "보스, 새 지역, 도감, 심층 기록 같은 순간마다 한 장씩 쓰여요": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A page is written for bosses, new regions, dex milestones and depth records"
+          }
+        }
+      }
+    },
+    "새 책상으로 이사": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to a new desk"
+          }
+        }
+      }
+    },
+    "새 책상으로 이사할까요?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to a new desk?"
+          }
+        }
+      }
+    },
+    "서랍 심층이 열리면 이사할 수 있어요": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can move once the Drawer Depths open"
+          }
+        }
+      }
+    },
+    "쉬는 시간엔 한 번만": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One quick look on your break"
+          }
+        }
+      }
+    },
+    "아직 못 만났어요": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not met yet"
+          }
+        }
+      }
+    },
+    "연결됨": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected"
+          }
+        }
+      }
+    },
+    "원정 띠 보이기": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show the band"
+          }
+        }
+      }
+    },
+    "원정 본부": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expedition HQ"
+          }
+        }
+      }
+    },
+    "원정 본부 열기": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open HQ"
+          }
+        }
+      }
+    },
+    "원정 시작!": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let's go!"
+          }
+        }
+      }
+    },
+    "원정 일지": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expedition Journal"
+          }
+        }
+      }
+    },
+    "원정 전술: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tactic: %@"
+          }
+        }
+      }
+    },
+    "원정 지역 바꾸기": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change region"
+          }
+        }
+      }
+    },
+    "원정대": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Party"
+          }
+        }
+      }
+    },
+    "위치": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position"
+          }
+        }
+      }
+    },
+    "이름을 눌러 바꿀 수 있어요": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click the name to rename"
+          }
+        }
+      }
+    },
+    "이미 만난 반짝이(3)·왕관(1)·희귀 손님(2)을 또 만나면 쌓여요. 반짝이 천장 %lld/%lld · 전설 천장 %lld/%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Earned when you meet a recorded Shiny (3), Crowned (1) or Guest (2) again. Shiny pity %lld/%lld · Legendary pity %lld/%lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "이미 만난 반짝이(3)·왕관(1)·희귀 손님(2)을 또 만나면 쌓여요. 반짝이 천장 %1$lld/%2$lld · 전설 천장 %3$lld/%4$lld"
+          }
+        }
+      }
+    },
+    "이사하기": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move"
+          }
+        }
+      }
+    },
+    "이전": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
+          }
+        }
+      }
+    },
+    "일반 일괄 판매": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sell all Common"
+          }
+        }
+      }
+    },
+    "일지 %lld장": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Journal %lld"
+          }
+        }
+      }
+    },
+    "자동 정리 (업그레이드 장착·잡템 판매)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto-tidy (equip upgrades, sell spares)"
+          }
+        }
+      }
+    },
+    "자리를 비운 %@ 동안: %@마리 처치 · 골드 +%@ · 전리품 %lld개%@%@%@%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "While away %@: %@ kills · gold +%@ · %lld loot%@%@%@%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "자리를 비운 %1$@ 동안: %2$@마리 처치 · 골드 +%3$@ · 전리품 %4$lld개%5$@%6$@%7$@%8$@"
+          }
+        }
+      }
+    },
+    "전리품을 눌러 장착하거나 판매하세요.\n장착 칸을 누르면 장비를 가방으로 돌려놓아요.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click loot to equip or sell it.\nClick an equipped slot to send it back to the bag."
+          }
+        }
+      }
+    },
+    "종료": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit"
+          }
+        }
+      }
+    },
+    "주간 목표 달성 ✓ (추억 조각 +1)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly goal done ✓ (Memory +1)"
+          }
+        }
+      }
+    },
+    "주간 목표: %lld/%lld마리 → 추억 조각 +1": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly goal: %lld/%lld kills → Memory +1"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "주간 목표: %1$lld/%2$lld마리 → 추억 조각 +1"
+          }
+        }
+      }
+    },
+    "지금 이사하면 추억 조각 +%lld · 다음 책상: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move now for +%lld Memories · next desk: %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "지금 이사하면 추억 조각 +%1$lld · 다음 책상: %2$@"
+          }
+        }
+      }
+    },
+    "책상 도감": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desk Dex"
+          }
+        }
+      }
+    },
+    "책상 원정대": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desk Expedition"
+          }
+        }
+      }
+    },
+    "책상 위의 작은 원정대": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A tiny expedition on your desk"
+          }
+        }
+      }
+    },
+    "처치 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kills %@"
+          }
+        }
+      }
+    },
+    "체력": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HP"
+          }
+        }
+      }
+    },
+    "최적 장착": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Best gear"
+          }
+        }
+      }
+    },
+    "취소": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "칸마다 골드 +1%% (지금 +%lld%%) · 반짝이 1/400 · 왕관 1/50 · 희귀 손님은 가끔 웨이브에 끼어들어요": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+1%% gold per entry (now +%lld%%) · Shiny 1/400 · Crowned 1/50 · Rare guests sometimes join a wave"
+          }
+        }
+      }
+    },
+    "클릭 통과 (작업 방해 안 함)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click-through (never in the way)"
+          }
+        }
+      }
+    },
+    "트로피 진열장": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trophy shelf"
+          }
+        }
+      }
+    },
+    "파일": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File"
+          }
+        }
+      }
+    },
+    "판매  🪙 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sell  🪙 %@"
+          }
+        }
+      }
+    },
+    "편집": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit"
+          }
+        }
+      }
+    },
+    "화면 공유·캡처에서 숨기기": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide from screen sharing & capture"
+          }
+        }
+      }
+    },
+    "화면 아래 띠에서 단추·클립·몽당이 알아서 싸워요. 클릭 통과가 켜져 있어 작업을 방해하지 않고, 전체화면·화면 공유 중에는 숨어요. 앱을 꺼 둔 동안의 진행도 최대 12시간까지 정산돼요.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Button, Clip and Stubby fight on their own in the band at the bottom of your screen. Click-through keeps it out of your way, and it hides during full-screen apps and screen sharing. Up to 12 hours of progress is settled while the app is closed."
+          }
+        }
+      }
+    },
+    "확인": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "효과음": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound effects"
+          }
+        }
+      }
+    },
+    "🎒 %lld/%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🎒 %lld/%lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "🎒 %1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "🎒 가방 %lld/%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🎒 Bag %lld/%lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": "🎒 가방 %1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "🐾 동행": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🐾 Companions"
+          }
+        }
+      }
+    },
+    "📅 이번 주: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "📅 This week: %@"
+          }
+        }
+      }
+    },
+    "🤖": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🤖"
+          }
+        }
+      }
+    },
+    "🤖 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🤖 %@"
+          }
+        }
+      }
+    },
+    "🤖 대장 일지": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🤖 Captain's log"
+          }
+        }
+      }
+    },
+    "🧩 도감 조각 %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🧩 Dex shards %lld"
+          }
+        }
+      }
+    },
+    "🪙 %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "🪙 %@"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

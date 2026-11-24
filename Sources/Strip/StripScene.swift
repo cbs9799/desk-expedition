@@ -98,12 +98,19 @@ final class StripScene: SKScene {
         lastBattleTime = b.time
         if sceneKey != p.region.scene { loadRegion(p.region) }
 
+        // Power: 60 fps only while blows are being traded; 30 fps when marching, idle, or in Low Power Mode.
+        if let view {
+            let engaged = b.monsters.contains { $0.x < Engine.attackRange }
+            let want = (engaged && !ProcessInfo.processInfo.isLowPowerModeEnabled) ? 60 : 30
+            if view.preferredFramesPerSecond != want { view.preferredFramesPerSecond = want }
+        }
         updateScroll(dt: dt, battle: b)
         consumeEffects(b, progress: p)
         syncMonsters(b, progress: p)
         syncHeroes(b, progress: p, dt: dt)
         celebrations(store)
         cursorReactions()
+        updateCompanions(p, b, dt: dt)
 
         // Shake (only the world inside the band moves).
         if shake > 0.05 {
@@ -113,6 +120,121 @@ final class StripScene: SKScene {
             world.position = .zero
             shake = 0
         }
+    }
+
+    // MARK: Companions, cart, camp, seasons
+
+    private var pets: [Companion: SKSpriteNode] = [:]
+    private var cart: SKSpriteNode?
+    private var campNodes: [SKSpriteNode] = []
+    private var companionCheck = 0.0
+    private var seasonNode: SKEmitterNode?
+
+    private func sfx(_ k: SoundFX.Kind) {
+        if store?.settings.sound == true { SoundFX.shared.play(k) }
+    }
+
+    private func updateCompanions(_ p: Progress, _ b: Battle, dt: Double) {
+        if seasonNode == nil { addSeason() }
+        companionCheck -= dt
+        if companionCheck <= 0 {
+            companionCheck = 1
+            guard let sheet = SpriteSheet.named("pets") else { return }
+            for c in Companion.allCases where c.unlocked(p) && pets[c] == nil {
+                let n = SKSpriteNode(texture: sheet.frames(c.anim).first)
+                n.anchorPoint = sheet.anchor
+                n.setScale(PixelArt.scale)
+                n.alpha = 0
+                n.run(.fadeIn(withDuration: 0.6))
+                actorLayer.addChild(n)
+                pets[c] = n
+            }
+            if Camp.hasCart(p), cart == nil, let camp = SpriteSheet.named("camp") {
+                let n = SKSpriteNode(texture: camp.frames[0])
+                n.anchorPoint = camp.anchor
+                n.setScale(PixelArt.scale * 0.7)
+                n.zPosition = -0.5
+                actorLayer.addChild(n)
+                cart = n
+            }
+        }
+        guard let sheet = SpriteSheet.named("pets") else { return }
+        let retreating: Bool
+        if case .retreating = b.phase { retreating = true } else { retreating = false }
+        let lead = heroes.last?.root.position.x ?? 90       // the mage walks at the back
+        let moving = speedNow > 6
+        for (i, c) in Companion.allCases.enumerated() {
+            guard let n = pets[c] else { continue }
+            let frames = sheet.frames(c.anim)
+            n.texture = frames[(Int(clock * (moving || c == .bird ? 9 : 3)) + i).wrapped(frames.count)]
+            let slot = c == .bird ? 0 : CGFloat(i)
+            let x = lead - 26 - slot * 17 + CGFloat(sin(clock * 1.3 + Double(i))) * 2
+            let y = c == .bird ? Self.groundY + 30 + CGFloat(sin(clock * 3)) * 4 : Self.groundY
+            n.position = CGPoint(x: x.rounded(toPixel: 0.5), y: y.rounded(toPixel: 0.5))
+            n.xScale = retreating ? -PixelArt.scale : PixelArt.scale
+        }
+        if let cart {
+            let behind = CGFloat(pets.filter { $0.key != .bird }.count)
+            cart.position = CGPoint(x: max(26, lead - 30 - behind * 17).rounded(toPixel: 0.5),
+                                    y: Self.groundY + (moving ? CGFloat(sin(clock * 14)) * 0.5 : 0))
+        }
+        // After a wipe the party rests at a little camp until it's ready again.
+        if retreating && campNodes.isEmpty, let camp = SpriteSheet.named("camp") {
+            for (k, frame) in [(0, 1), (1, 2)] {
+                let n = SKSpriteNode(texture: camp.frames[frame])
+                n.anchorPoint = camp.anchor
+                n.setScale(PixelArt.scale * 0.85)
+                n.position = CGPoint(x: 150 + CGFloat(k) * 44, y: Self.groundY)
+                n.zPosition = -1
+                n.alpha = 0
+                n.run(.fadeIn(withDuration: 0.4))
+                actorLayer.addChild(n)
+                campNodes.append(n)
+            }
+            FX.label(textLayer, "야영 중… 다시 정비해요", at: CGPoint(x: 190, y: 80), color: NSColor(hex: 0xFFE27A), size: 11, life: 2.5)
+        } else if !retreating && !campNodes.isEmpty {
+            for n in campNodes { n.run(.sequence([.fadeOut(withDuration: 0.4), .removeFromParent()])) }
+            campNodes = []
+        }
+    }
+
+    /// Gentle seasonal particles: snow (Dec–Feb), petals (Mar–May), fireflies (Jun–Aug), leaves (Sep–Nov).
+    private func addSeason() {
+        let month = Calendar.current.component(.month, from: Date())
+        let e = SKEmitterNode()
+        e.particleTexture = FX.softDot
+        e.position = CGPoint(x: StripLayout.battleWidth / 2, y: StripLayout.height + 4)
+        e.particlePositionRange = CGVector(dx: StripLayout.battleWidth, dy: 0)
+        e.particleBirthRate = 2.5
+        e.particleLifetime = 9
+        e.particleSpeed = 9
+        e.particleSpeedRange = 4
+        e.emissionAngle = -.pi / 2
+        e.emissionAngleRange = 0.5
+        e.xAcceleration = -2
+        e.particleAlpha = 0.8
+        e.particleAlphaRange = 0.2
+        e.particleColorBlendFactor = 1
+        e.particleScale = 0.07
+        e.particleScaleRange = 0.03
+        e.particleRotationSpeed = 1
+        switch month {
+        case 12, 1, 2: e.particleColor = .white
+        case 3, 4, 5: e.particleColor = NSColor(hex: 0xFFB7D0)
+        case 6, 7, 8:
+            e.particleColor = NSColor(hex: 0xD8FF7A); e.particleBlendMode = .add
+            e.position = CGPoint(x: StripLayout.battleWidth / 2, y: 40)
+            e.particlePositionRange = CGVector(dx: StripLayout.battleWidth, dy: 50)
+            e.particleSpeed = 4; e.emissionAngleRange = .pi * 2
+            e.particleAlphaSequence = SKKeyframeSequence(keyframeValues: [0, 1, 0.2, 1, 0], times: [0, 0.25, 0.5, 0.75, 1])
+        default:
+            e.particleColor = NSColor(hex: 0xE8913A); e.particleScale = 0.09
+            e.particleColorSequence = SKKeyframeSequence(keyframeValues: [NSColor(hex: 0xE8913A), NSColor(hex: 0xC2542A)], times: [0, 1])
+        }
+        e.advanceSimulationTime(9)
+        e.zPosition = 1
+        fxLayer.addChild(e)
+        seasonNode = e
     }
 
     private func resetForNewBattle() {
@@ -198,6 +320,20 @@ final class StripScene: SKScene {
             glint.run(.repeatForever(.sequence([.fadeAlpha(to: 0.1, duration: 0.5), .fadeAlpha(to: 1, duration: 0.5)])))
             n.addChild(glint)
             return n
+        }
+        if let p = store?.progress, let camp = SpriteSheet.named("camp"), Double.random(in: 0..<1) < 0.15 {
+            // Milestone markers along the road: banner (boss), chest (legendary found), signpost (moved desks).
+            var frames: [Int] = []
+            if p.bossKills > 0 { frames.append(3) }
+            if !p.uniquesFound.isEmpty || p.journal.contains(where: { $0.id == "first_legendary" }) { frames.append(4) }
+            if p.moves > 0 { frames.append(5) }
+            if let f = frames.randomElement() {
+                let n = SKSpriteNode(texture: camp.frames[f])
+                n.anchorPoint = camp.anchor
+                n.setScale(PixelArt.scale * 0.8)
+                scenery(n)
+                return n
+            }
         }
         guard let props, let f = usable.randomElement() else { return nil }
         let n = SKSpriteNode(texture: props.frames[f])
@@ -386,6 +522,7 @@ final class StripScene: SKScene {
                 FX.burst(self.fxLayer, at: c, color: FX.gold, count: 8, speed: 80, life: 0.6, size: 0.12, angle: .pi / 2,
                          spread: 1.6, gravity: -120)
                 FX.coins(self.overlayFX, from: c, to: Self.goldTarget, count: actor.boss ? 10 : 3)
+                self.sfx(.coin)
                 if actor.boss {
                     FX.legendary(self.fxLayer, at: CGPoint(x: c.x, y: Self.groundY))
                     FX.label(self.textLayer, "보스 처치!", at: CGPoint(x: 320, y: 70), color: FX.gold, size: 16, life: 1.6)
@@ -424,6 +561,7 @@ final class StripScene: SKScene {
                 after(0.1) { [weak self] in
                     guard let self else { return }
                     FX.slash(self.fxLayer, at: target, big: self.heroes[0].clockSkillRecent(self.clock))
+                    self.sfx(.hit)
                     self.hitstop(0.06); self.shake = max(self.shake, 2)
                 }
             case .arrow(let from, let to):
@@ -432,6 +570,7 @@ final class StripScene: SKScene {
                 _ = from
                 after(0.14) { [weak self] in
                     guard let self else { return }
+                    self.sfx(.arrow)
                     FX.arrowShot(self.fxLayer, from: start, to: end) { [weak self] in
                         guard let self else { return }
                         FX.impact(self.fxLayer, at: end, color: FX.leaf, power: 0.8)
@@ -444,6 +583,7 @@ final class StripScene: SKScene {
                 after(0.12) { [weak self] in
                     guard let self else { return }
                     FX.fireball(self.fxLayer, from: start, to: end) { [weak self] in
+                        self?.sfx(.boom)
                         self?.hitstop(0.05); self?.shake = max(self?.shake ?? 0, 2.5)
                     }
                 }
@@ -452,6 +592,7 @@ final class StripScene: SKScene {
                 after(0.3) { [weak self] in
                     guard let self else { return }
                     FX.explosion(self.fxLayer, at: target, power: 1.4)
+                    self.sfx(.boom)
                     FX.shockwave(self.fxLayer, at: CGPoint(x: target.x, y: Self.groundY), color: FX.arcane, radius: 40)
                     self.hitstop(0.08); self.shake = max(self.shake, 4.5)
                 }
@@ -546,12 +687,14 @@ final class StripScene: SKScene {
         if store.legendaryDrops != seenLegendary {
             seenLegendary = store.legendaryDrops
             FX.legendary(fxLayer, at: CGPoint(x: 300, y: Self.groundY))
+            sfx(.legendary)
             shake = max(shake, 3)
         }
         for i in 0..<min(3, store.levelUps.count) where store.levelUps[i] != seenLevelUps[i] {
             seenLevelUps[i] = store.levelUps[i]
             heroes[i].hop(at: clock)
             FX.levelUp(fxLayer, at: CGPoint(x: heroes[i].root.position.x, y: Self.groundY))
+            sfx(.level)
         }
     }
 
@@ -707,7 +850,11 @@ final class HeroActor {
     private var legendGlow: SKEmitterNode?
 
     func apply(hero: HeroProgress) {
-        let legendary = hero.weapon?.rarity == .legendary
+        let rarity = hero.weapon?.rarity ?? .common
+        let legendary = rarity >= .rare
+        if legendary, let g = legendGlow, g.particleColor != NSColor(hex: rarity.colorHex) {
+            g.particleColor = NSColor(hex: rarity.colorHex)
+        }
         if legendary && legendGlow == nil {
             let e = SKEmitterNode()
             e.particleTexture = FX.softDot
@@ -720,9 +867,10 @@ final class HeroActor {
             e.particleScaleSpeed = -0.1
             e.particleAlphaSpeed = -1.6
             e.particlePositionRange = CGVector(dx: 8, dy: 8)
-            e.particleColor = FX.gold
+            e.particleColor = NSColor(hex: rarity.colorHex)
             e.particleColorBlendFactor = 1
             e.particleBlendMode = .add
+            e.particleBirthRate = rarity == .legendary ? 14 : 7
             e.position = CGPoint(x: 12, y: CGFloat(heightPx) * PixelArt.scale * 0.5)
             root.addChild(e)
             legendGlow = e

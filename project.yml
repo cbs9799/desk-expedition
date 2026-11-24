@@ -1,5 +1,6 @@
 name: DeskExpedition
 options:
+  developmentLanguage: ko
   bundleIdPrefix: club.lemongrove
   deploymentTarget:
     macOS: "14.0"
@@ -7,8 +8,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.2.6"
-    CURRENT_PROJECT_VERSION: "8"
+    MARKETING_VERSION: "0.2.7"
+    CURRENT_PROJECT_VERSION: "9"
 targets:
   DeskExpedition:
     type: application
@@ -19,12 +20,15 @@ targets:
         buildPhase: resources
       - path: Resources/AI
         buildPhase: resources
+      - path: Resources/Loc
+        buildPhase: resources
     info:
       path: Sources/Info.plist
       properties:
         CFBundleDisplayName: 책상 원정대
         CFBundleName: 책상 원정대
         LSUIElement: true
+        CFBundleLocalizations: [ko, en]
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSApplicationCategoryType: public.app-category.role-playing-games

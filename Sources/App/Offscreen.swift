@@ -37,6 +37,20 @@ final class StripOffscreen {
         renderer.update(atTime: time)
     }
 
+    /// Renders a frame on the GPU without reading it back (what the live view does each frame).
+    func renderOnly() -> Bool {
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = texture
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].storeAction = .store
+        guard let cb = queue.makeCommandBuffer() else { return false }
+        renderer.render(withViewport: CGRect(x: 0, y: 0, width: texture.width, height: texture.height),
+                        commandBuffer: cb, renderPassDescriptor: pass)
+        cb.commit()
+        cb.waitUntilCompleted()
+        return true
+    }
+
     func image() -> CGImage? {
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = texture

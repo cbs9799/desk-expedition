@@ -52,6 +52,13 @@ struct MenuView: View {
             VStack(alignment: .leading, spacing: 8) {
                 ToggleRow(title: "원정 띠 보이기", isOn: store.settings.visible) { store.settings.visible.toggle() }
                 ToggleRow(title: "클릭 통과 (작업 방해 안 함)", isOn: store.settings.clickThrough) { store.settings.clickThrough.toggle() }
+                ToggleRow(title: "화면 공유·캡처에서 숨기기", isOn: store.settings.hideInCapture) { store.settings.hideInCapture.toggle() }
+                ToggleRow(title: "자동 정리 (업그레이드 장착·잡템 판매)", isOn: store.settings.autoEquip && store.settings.autoSell) {
+                    let on = !(store.settings.autoEquip && store.settings.autoSell)
+                    store.settings.autoEquip = on
+                    store.settings.autoSell = on
+                }
+                ToggleRow(title: "효과음", isOn: store.settings.sound) { store.settings.sound.toggle() }
                 Text("위치").font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
                 SegmentRow(options: StripSettings.Alignment.allCases, selected: store.settings.alignment,
                            label: { $0.name }, onSelect: { store.settings.alignment = $0 })
@@ -59,7 +66,10 @@ struct MenuView: View {
                 if screenCount > 1 {
                     Text("모니터").font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
                     SegmentRow(options: Array(0..<screenCount), selected: min(store.settings.screenIndex, screenCount - 1),
-                               label: { "모니터 \($0 + 1)" }, onSelect: { store.settings.screenIndex = $0 })
+                               label: { "모니터 \($0 + 1)" }, onSelect: { i in
+                                   store.settings.screenIndex = i
+                                   store.settings.displayID = NSScreen.screens[safe: i]?.displayID ?? 0
+                               })
                 }
             }
 
@@ -101,7 +111,7 @@ struct AIConnectSection: View {
         command = "\(exe)"
         args = ["--mcp"]
         """),
-        ("자동 플레이", "bash \"\(Bundle.main.resourcePath ?? "/Applications/DeskExpedition.app/Contents/Resources")/ai-autoplay.sh\" install claude 30"),
+        (L10n.isEnglish ? "Autoplay" : "자동 플레이", "bash \"\(Bundle.main.resourcePath ?? "/Applications/DeskExpedition.app/Contents/Resources")/ai-autoplay.sh\" install claude 30"),
     ]}
 
     var body: some View {
@@ -126,6 +136,9 @@ struct AIConnectSection: View {
                     .buttonStyle(GameButtonStyle(color: Theme.panelHi, compact: true))
                 }
             }
+            SegmentRow(options: AIStyle.allCases.map(\.rawValue), selected: store.settings.aiStyle,
+                       label: { (L10n.isEnglish ? "" : "대장: ") + (AIStyle(rawValue: $0)?.name ?? "") },
+                       onSelect: { store.settings.aiStyle = $0 })
             ForEach(store.aiLog.suffix(3).reversed()) { line in
                 Text("🤖 \(line.text)").font(.system(size: 10, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color(hex: 0x9CF4FF)).lineLimit(2)

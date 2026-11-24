@@ -5,13 +5,22 @@ import UserNotifications
 
 struct StripSettings: Equatable {
     enum Alignment: Int, CaseIterable { case left, center, right
-        var name: String { ["왼쪽", "가운데", "오른쪽"][rawValue] }
+        var name: String { L10n.t(["왼쪽", "가운데", "오른쪽"][rawValue]) }
     }
 
     var visible = true
     var clickThrough = true
     var screenIndex = 0
     var alignment: Alignment = .left
+    /// Display to show the band on (CGDirectDisplayID) — survives monitors being unplugged/replugged. 0 = use index.
+    var displayID: UInt32 = 0
+    /// Exclude the band from screenshots and screen sharing.
+    var hideInCapture = true
+    /// Auto-tidy: equip upgrades and sell low-rarity spares so a full bag never stalls progress.
+    var autoEquip = true
+    var autoSell = true
+    var sound = false
+    var aiStyle = 0
 }
 
 @MainActor
@@ -67,6 +76,12 @@ final class GameStore {
         if aiLog.count > 50 { aiLog.removeFirst(aiLog.count - 50) }
         aiActions += 1
         lastAIText = text
+        progress.aiDiary.append(DiaryEntry(date: Date(), text: text))
+        if progress.aiDiary.count > 200 {
+            let drop = progress.aiDiary.count - 200
+            progress.aiDiary.removeFirst(drop)
+            progress.aiDiarySeen = max(0, progress.aiDiarySeen - drop)
+        }
         showBanner("🤖 \(text)", seconds: 6)
     }
 
@@ -147,6 +162,11 @@ final class GameStore {
         for d in report.drops where d.rarity >= .rare { logEvent("\(d.rarity.name) 전리품: \(d.name)") }
         for n in report.newDex { logEvent("도감 등록: \(n)") }
         if report.wipes > 0 { logEvent("전멸 → 3웨이브 후퇴 (\(progress.stageText))") }
+        if report.weeklyGoal {
+            showBanner("주간 목표 달성! \(WeeklyRule.goalKills)마리 처치 · 추억 조각 +1", seconds: 6)
+            logEvent("주간 목표 달성 → 추억 조각 +1")
+        }
+        if !report.drops.isEmpty { autoTidy() }
         if report.bagBecameFull { logEvent("가방이 가득 참") }
         if let name = report.newDex.last {
             dexDiscoveries += report.newDex.count
@@ -291,6 +311,64 @@ final class GameStore {
         progress.heroes.contains { ($0.item(in: item.slot)?.score ?? 0) < item.score }
     }
 
+    // MARK: 0.2.7 systems
+
+    /// Equip upgrades and sell spare low-rarity gear (both optional, on by default).
+    func autoTidy() {
+        if settings.autoEquip, progress.bag.contains(where: { isUpgrade($0) }) { autoEquip() }
+        if settings.autoSell, progress.bag.count >= Progress.bagCapacity - 6 { sellAll(upTo: .uncommon) }
+    }
+
+    func chooseTrait(_ hero: Int, tier: Int, option: Int) {
+        guard progress.heroes.indices.contains(hero), Traits.tiers.indices.contains(tier), (0...1).contains(option),
+              progress.heroes[hero].level >= Traits.tiers[tier] else { return }
+        let oldMax = progress.heroes[hero].maxHP
+        var t = progress.heroes[hero].traits ?? Array(repeating: -1, count: Traits.tiers.count)
+        while t.count < Traits.tiers.count { t.append(-1) }
+        t[tier] = option
+        progress.heroes[hero].traits = t
+        adjustHP(hero, oldMax: oldMax)
+        let (a, b) = Traits.options(progress.heroes[hero].heroClass, tier: tier)
+        showBanner("\(progress.heroes[hero].displayName) 특성: \((option == 0 ? a : b).name)", seconds: 4)
+        levelUps[hero] += 1   // reuse the level-up sparkle
+    }
+
+    func setTactic(_ t: Tactic) {
+        guard progress.tactic != t else { return }
+        progress.tactic = t
+        showBanner("전술: \(t.icon) \(t.name) — \(t.desc)", seconds: 4)
+    }
+
+    /// 도감 조각 → a legendary of the chosen slot.
+    @discardableResult
+    func exchangeShards(slot: GearSlot) -> Item? {
+        guard progress.shards >= Pity.legendaryPrice, !progress.bagIsFull else { return nil }
+        var rng = SystemRandomNumberGenerator()
+        let item = Engine.makeItem(region: progress.regionIndex, boss: true, floor: progress.isEndless ? progress.wave : 0,
+                                   forceLegendary: true, slot: slot, rng: &rng)
+        progress.shards -= Pity.legendaryPrice
+        progress.bag.append(item)
+        if let u = item.unique { progress.uniquesFound.insert(u) }
+        legendaryDrops += 1
+        showBanner("조각 교환: \(item.name)", seconds: 5)
+        return item
+    }
+
+    var unseenDiary: [DiaryEntry] { Array(progress.aiDiary.dropFirst(min(progress.aiDiarySeen, progress.aiDiary.count))) }
+    func markDiarySeen() { progress.aiDiarySeen = progress.aiDiary.count }
+
+    // Sleep/wake: timers stop while the Mac sleeps, so settle that time like an absence.
+    @ObservationIgnored private var sleptAt: Date?
+    func willSleep() { sleptAt = Date(); save() }
+    func didWake() {
+        guard let at = sleptAt else { return }
+        sleptAt = nil
+        let away = Date().timeIntervalSince(at)
+        guard away > 120 else { return }
+        progress.lastActive = at
+        settleOfflineTime()
+    }
+
     /// Waves the player may jump to in the current region: every wave in a cleared region,
     /// otherwise up to the wave reached now. Not offered in 서랍 심층.
     var selectableWaves: ClosedRange<Int>? {
@@ -373,6 +451,13 @@ final class GameStore {
         if d.object(forKey: "strip.clickThrough") != nil { s.clickThrough = d.bool(forKey: "strip.clickThrough") }
         s.screenIndex = d.integer(forKey: "strip.screen")
         s.alignment = StripSettings.Alignment(rawValue: d.integer(forKey: "strip.alignment")) ?? .left
+        s.displayID = UInt32(truncatingIfNeeded: d.integer(forKey: "strip.displayID"))
+        for (key, path) in [("strip.hideInCapture", \StripSettings.hideInCapture), ("tidy.autoEquip", \StripSettings.autoEquip),
+                            ("tidy.autoSell", \StripSettings.autoSell), ("fx.sound", \StripSettings.sound)]
+        where d.object(forKey: key) != nil {
+            s[keyPath: path] = d.bool(forKey: key)
+        }
+        s.aiStyle = d.integer(forKey: "ai.style")
         return s
     }
 
@@ -383,5 +468,11 @@ final class GameStore {
         d.set(settings.clickThrough, forKey: "strip.clickThrough")
         d.set(settings.screenIndex, forKey: "strip.screen")
         d.set(settings.alignment.rawValue, forKey: "strip.alignment")
+        d.set(Int(settings.displayID), forKey: "strip.displayID")
+        d.set(settings.hideInCapture, forKey: "strip.hideInCapture")
+        d.set(settings.autoEquip, forKey: "tidy.autoEquip")
+        d.set(settings.autoSell, forKey: "tidy.autoSell")
+        d.set(settings.sound, forKey: "fx.sound")
+        d.set(settings.aiStyle, forKey: "ai.style")
     }
 }

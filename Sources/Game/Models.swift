@@ -8,7 +8,8 @@ enum HeroClass: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     /// Default nickname until the player renames the hero in HQ.
-    var defaultNickname: String {
+    var defaultNickname: String { L10n.t(defaultNicknameKo) }
+    var defaultNicknameKo: String {
         switch self {
         case .warrior: return "단추"
         case .archer: return "클립"
@@ -18,7 +19,8 @@ enum HeroClass: String, Codable, CaseIterable, Identifiable {
 
     var spriteKey: String { "hero_\(rawValue)" }
 
-    var name: String {
+    var name: String { L10n.t(nameKo) }
+    var nameKo: String {
         switch self {
         case .warrior: return "전사"
         case .archer: return "궁수"
@@ -51,7 +53,8 @@ enum HeroClass: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    var skillName: String {
+    var skillName: String { L10n.t(skillNameKo) }
+    var skillNameKo: String {
         switch self {
         case .warrior: return "방패 강타"
         case .archer: return "연사"
@@ -59,7 +62,8 @@ enum HeroClass: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    var skillDescription: String {
+    var skillDescription: String { L10n.t(skillDescriptionKo) }
+    var skillDescriptionKo: String {
         switch self {
         case .warrior: return "맨 앞 적에게 공격력 300% 피해"
         case .archer: return "화살 3발을 무작위 적에게 발사"
@@ -83,7 +87,8 @@ enum Rarity: Int, Codable, CaseIterable, Comparable {
 
     static func < (lhs: Rarity, rhs: Rarity) -> Bool { lhs.rawValue < rhs.rawValue }
 
-    var name: String {
+    var name: String { L10n.t(nameKo) }
+    var nameKo: String {
         switch self {
         case .common: return "일반"
         case .uncommon: return "고급"
@@ -115,7 +120,7 @@ enum Rarity: Int, Codable, CaseIterable, Comparable {
 enum GearSlot: String, Codable, CaseIterable {
     case weapon, armor
 
-    var name: String { self == .weapon ? "무기" : "방어구" }
+    var name: String { L10n.t(self == .weapon ? "무기" : "방어구") }
 }
 
 struct Item: Codable, Identifiable, Hashable {
@@ -158,6 +163,8 @@ struct HeroProgress: Codable, Identifiable, Equatable {
     var nickname: String?
     /// Index into `Accessory.all` (nil/0 → none).
     var accessory: Int?
+    /// Chosen trait option per tier (see `Traits.tiers`), -1 = not chosen.
+    var traits: [Int]?
 
     var id: HeroClass { heroClass }
     var displayName: String {
@@ -165,8 +172,8 @@ struct HeroProgress: Codable, Identifiable, Equatable {
         return n.isEmpty ? heroClass.defaultNickname : n
     }
 
-    var maxHP: Double { heroClass.baseHP * pow(1.1, Double(level - 1)) + Double(armor?.power ?? 0) }
-    var attack: Double { heroClass.baseATK * pow(1.1, Double(level - 1)) + Double(weapon?.power ?? 0) }
+    var maxHP: Double { (heroClass.baseHP * pow(1.1, Double(level - 1)) + Double(armor?.power ?? 0)) * traitEffect.hp }
+    var attack: Double { (heroClass.baseATK * pow(1.1, Double(level - 1)) + Double(weapon?.power ?? 0)) * traitEffect.atk }
     var levelUpCost: Int { Int((15 * pow(1.17, Double(level - 1))).rounded()) }
 
     func item(in slot: GearSlot) -> Item? { slot == .weapon ? weapon : armor }
@@ -179,7 +186,8 @@ struct HeroProgress: Codable, Identifiable, Equatable {
 // MARK: - Regions
 
 struct Region {
-    let name: String
+    var name: String { L10n.t(ko) }
+    let ko: String
     let adjective: String
     let monsterNames: [String]
     let bossName: String
@@ -194,27 +202,27 @@ struct Region {
     static let wavesPerRegion = 10
 
     static let all: [Region] = [
-        Region(name: "공책 들판", adjective: "공책",
+        Region(ko: "공책 들판", adjective: "공책",
                monsterNames: ["지우개똥 슬라임", "종이학", "지우개 골렘"], bossName: "스테이플러 대왕",
                scene: "notebook", monsterKeys: ["eraser_slime", "paper_crane", "eraser_golem"], bossKey: "stapler_king",
                groundColor: 0xD9D2BE),
-        Region(name: "연필꽂이 협곡", adjective: "연필꽂이",
+        Region(ko: "연필꽂이 협곡", adjective: "연필꽂이",
                monsterNames: ["연필밥 슬라임", "클립 박쥐", "몽당연필 골렘"], bossName: "연필깎이 거인",
                scene: "pencilcup", monsterKeys: ["shaving_slime", "clip_bat", "stub_golem"], bossKey: "sharpener_giant",
                groundColor: 0xA0703F),
-        Region(name: "머그컵 늪", adjective: "머그컵",
+        Region(ko: "머그컵 늪", adjective: "머그컵",
                monsterNames: ["커피 방울 슬라임", "티백 유령", "각설탕 골렘"], bossName: "머그컵 문어",
                scene: "mug", monsterKeys: ["coffee_slime", "teabag_ghost", "sugar_golem"], bossKey: "mug_octopus",
                groundColor: 0x6B4A33),
-        Region(name: "화분 정글", adjective: "화분",
+        Region(ko: "화분 정글", adjective: "화분",
                monsterNames: ["이끼 슬라임", "민들레 씨 요정", "선인장 골렘"], bossName: "다육이 왕",
                scene: "planter", monsterKeys: ["moss_slime", "dandelion_sprite", "cactus_golem"], bossKey: "succulent_king",
                groundColor: 0x5A4030),
-        Region(name: "모니터 성채", adjective: "모니터",
+        Region(ko: "모니터 성채", adjective: "모니터",
                monsterNames: ["먼지 토끼", "커서 유령", "키캡 골렘"], bossName: "무선 마우스 용",
                scene: "monitor", monsterKeys: ["dust_bunny", "cursor_ghost", "keycap_golem"], bossKey: "mouse_dragon",
                groundColor: 0x2E3550),
-        Region(name: "서랍 심층", adjective: "서랍",
+        Region(ko: "서랍 심층", adjective: "서랍",
                monsterNames: ["심층 슬라임", "심층 비행체", "심층 골렘"], bossName: "심층의 메아리",
                scene: "drawer", monsterKeys: ["eraser_slime", "paper_crane", "eraser_golem"], bossKey: "stapler_king",
                groundColor: 0x3A2E28, endless: true),
@@ -271,6 +279,16 @@ struct Progress: Codable, Equatable {
     var wipes: Int = 0
     // Current run only.
     var runBestFloor: Int = 0
+    // 0.2.7 systems
+    var tactic: Tactic = .balanced
+    var shinyPity: Int = 0
+    var legendaryPity: Int = 0
+    var shards: Int = 0
+    var weekKey: String = ""
+    var weekKills: Int = 0
+    var weekClaimed: Bool = false
+    var aiDiary: [DiaryEntry] = []
+    var aiDiarySeen: Int = 0
 
     var region: Region { Region.all[regionIndex] }
     var isEndless: Bool { region.endless }
@@ -307,6 +325,15 @@ struct Progress: Codable, Equatable {
         moves = try c.decodeIfPresent(Int.self, forKey: .moves) ?? 0
         wipes = try c.decodeIfPresent(Int.self, forKey: .wipes) ?? 0
         runBestFloor = try c.decodeIfPresent(Int.self, forKey: .runBestFloor) ?? 0
+        tactic = try c.decodeIfPresent(Tactic.self, forKey: .tactic) ?? .balanced
+        shinyPity = try c.decodeIfPresent(Int.self, forKey: .shinyPity) ?? 0
+        legendaryPity = try c.decodeIfPresent(Int.self, forKey: .legendaryPity) ?? 0
+        shards = try c.decodeIfPresent(Int.self, forKey: .shards) ?? 0
+        weekKey = try c.decodeIfPresent(String.self, forKey: .weekKey) ?? ""
+        weekKills = try c.decodeIfPresent(Int.self, forKey: .weekKills) ?? 0
+        weekClaimed = try c.decodeIfPresent(Bool.self, forKey: .weekClaimed) ?? false
+        aiDiary = try c.decodeIfPresent([DiaryEntry].self, forKey: .aiDiary) ?? []
+        aiDiarySeen = try c.decodeIfPresent(Int.self, forKey: .aiDiarySeen) ?? 0
         regionIndex = min(max(0, regionIndex), Region.all.count - 1)
         unlockedRegion = min(max(0, unlockedRegion), Region.all.count - 1)
     }

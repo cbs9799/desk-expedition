@@ -31,7 +31,7 @@ struct GameButtonStyle: ButtonStyle {
 }
 
 struct ToggleRow: View {
-    let title: String
+    let title: LocalizedStringKey
     let isOn: Bool
     let action: () -> Void
 
@@ -62,7 +62,7 @@ struct SegmentRow<T: Hashable>: View {
         HStack(spacing: 4) {
             ForEach(options, id: \.self) { opt in
                 Button { onSelect(opt) } label: {
-                    Text(label(opt))
+                    Text(LocalizedStringKey(label(opt)))
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .lineLimit(1)
                         .frame(maxWidth: .infinity)

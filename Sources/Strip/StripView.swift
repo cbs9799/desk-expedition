@@ -58,14 +58,14 @@ struct StripHUD: View {
         let p = progress
         VStack(alignment: .leading, spacing: 5) {
             if let banner {
-                Text(banner).font(.system(size: 12, weight: .heavy, design: .rounded))
+                Text(L10n.t(banner)).font(.system(size: 12, weight: .heavy, design: .rounded))
                     .foregroundStyle(Color(hex: 0xFFE27A)).lineLimit(2).floating()
                     .frame(height: 34, alignment: .leading)
             } else {
                 HStack {
                     regionPicker(p)
                     Spacer()
-                    Text(p.isBossWave ? (p.isEndless ? "\(p.wave)층 보스!" : "보스전!") : p.stageText)
+                    Text(L10n.t(p.isBossWave ? (p.isEndless ? "\(p.wave)층 보스!" : "보스전!") : p.stageText))
                         .font(.system(size: 12, weight: .heavy, design: .rounded))
                         .foregroundStyle(p.isBossWave ? Color(hex: 0xFF8A8A) : Color(hex: 0xE8ECFF)).floating()
                 }
@@ -76,6 +76,7 @@ struct StripHUD: View {
                     .foregroundStyle(Color(hex: 0xFFD45A)).floating()
                 Text("🎒 \(p.bag.count)/\(Progress.bagCapacity)").font(.system(size: 12, weight: .heavy, design: .rounded))
                     .foregroundStyle(p.bagIsFull ? Color(hex: 0xFF8A8A) : .white).floating()
+                tacticPicker(p)
                 Spacer()
                 Text("도감 \(p.dex.count)/\(Species.slotCount)").font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(Color(hex: 0x9CF4FF)).floating()
@@ -90,7 +91,7 @@ struct StripHUD: View {
     }
 
     @ViewBuilder private func regionPicker(_ p: Progress) -> some View {
-        let label = Text("\(p.region.name) ▾").font(.system(size: 14, weight: .black, design: .rounded)).foregroundStyle(.white)
+        let label = Text("\(L10n.t(p.region.name)) ▾").font(.system(size: 14, weight: .black, design: .rounded)).foregroundStyle(.white)
         if staticRendering {
             label.floating()
         } else {
@@ -134,7 +135,52 @@ struct StripHUD: View {
         .floating()
     }
 
-    private func levelChip(_ i: Int, _ p: Progress) -> some View {
+    @ViewBuilder private func tacticPicker(_ p: Progress) -> some View {
+        let label = Text(p.tactic.icon).font(.system(size: 13))
+        if staticRendering {
+            label.floating()
+        } else {
+            Menu {
+                ForEach(Tactic.allCases, id: \.self) { t in
+                    Button("\(t == p.tactic ? "✓ " : "")\(t.icon) \(t.name) — \(t.desc)") { store.setTactic(t) }
+                }
+            } label: { label }
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().floating()
+            .help("원정 전술: \(p.tactic.name)")
+        }
+    }
+
+    @ViewBuilder private func levelChip(_ i: Int, _ p: Progress) -> some View {
+        let h = p.heroes[i]
+        if let tier = h.pendingTraitTier, !staticRendering {
+            let (a, b) = Traits.options(h.heroClass, tier: tier)
+            Menu {
+                Section("★ Lv.\(Traits.tiers[tier]) 특성 고르기") {
+                    Button("\(a.name) — \(a.desc)") { store.chooseTrait(i, tier: tier, option: 0) }
+                    Button("\(b.name) — \(b.desc)") { store.chooseTrait(i, tier: tier, option: 1) }
+                }
+                Button("레벨업 (🪙 \(h.levelUpCost))") { store.levelUp(i) }.disabled(p.gold < h.levelUpCost)
+            } label: { chipLabel(h, affordable: p.gold >= h.levelUpCost, star: true) }
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            .shadow(color: .black.opacity(0.5), radius: 3, y: 1)
+        } else {
+            plainChip(i, p)
+        }
+    }
+
+    private func chipLabel(_ h: HeroProgress, affordable: Bool, star: Bool) -> some View {
+        HStack(spacing: 3) {
+            if star { Text("★").font(.system(size: 10, weight: .black)).foregroundStyle(Color(hex: 0xFFD45A)) }
+            Text(h.displayName).font(.system(size: 10, weight: .heavy, design: .rounded)).lineLimit(1)
+            Text("\(h.level)").font(.system(size: 10, weight: .black, design: .rounded)).foregroundStyle(Color(hex: 0xFFE27A))
+        }
+        .padding(.horizontal, 6).padding(.vertical, 3)
+        .background(Capsule().fill(star ? Color(hex: 0x6A4A12, opacity: 0.9) : Color.black.opacity(0.35)))
+        .overlay(Capsule().stroke(Color(hex: 0xFFD45A, opacity: 0.8), lineWidth: 1))
+        .foregroundStyle(.white)
+    }
+
+    private func plainChip(_ i: Int, _ p: Progress) -> some View {
         let h = p.heroes[i]
         let affordable = p.gold >= h.levelUpCost
         return Button { store.levelUp(i) } label: {

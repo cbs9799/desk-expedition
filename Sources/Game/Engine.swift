@@ -87,6 +87,7 @@ struct TickReport {
     var newDex: [String] = []
     var journalPages: [String] = []
     var trophies: [Int] = []
+    var weeklyGoal = false
 
     mutating func merge(_ other: TickReport) {
         kills += other.kills
@@ -100,6 +101,7 @@ struct TickReport {
         newDex += other.newDex
         journalPages += other.journalPages
         trophies += other.trophies
+        weeklyGoal = weeklyGoal || other.weeklyGoal
     }
 }
 
@@ -116,6 +118,7 @@ struct OfflineReport: Equatable {
     var durationText: String {
         let total = Int(seconds)
         let h = total / 3600, m = (total % 3600) / 60
+        if L10n.isEnglish { return h > 0 ? "\(h)h \(m)m" : "\(max(m, 1))m" }
         if h > 0 { return "\(h)시간 \(m)분" }
         return "\(max(m, 1))분"
     }
@@ -151,7 +154,7 @@ enum Engine {
         switch b.phase {
         case .spawning(let until):
             if b.time >= until {
-                spawnWave(p, &b, rng: &rng)
+                spawnWave(&p, &b, rng: &rng)
                 b.phase = .fighting
             }
         case .retreating(let until):
@@ -179,17 +182,26 @@ enum Engine {
 
     // MARK: Waves
 
-    static func spawnWave<R: RandomNumberGenerator>(_ p: Progress, _ b: inout Battle, rng: inout R) {
+    static func spawnWave<R: RandomNumberGenerator>(_ p: inout Progress, _ b: inout Battle, rng: inout R) {
         let r = p.regionIndex, w = p.wave
         var list: [Monster] = []
-        let hp = Region.monsterHP(region: r, wave: w)
+        let week = WeeklyRule.current()
+        let hp = Region.monsterHP(region: r, wave: w) * week.enemyHP
         let atk = Region.monsterATK(region: r, wave: w)
+        let endless = p.isEndless
         // Story regions use their own species; 서랍 심층 draws from every region.
-        func speciesRegion() -> Int { p.isEndless ? Int.random(in: 0..<Region.storyRegions, using: &rng) : r }
+        func speciesRegion() -> Int { endless ? Int.random(in: 0..<Region.storyRegions, using: &rng) : r }
+        var pity = p.shinyPity
         func roll() -> MonsterVariant {
+            pity += 1
+            if pity >= Pity.shinySpawns { pity = 0; return .shiny }   // 천장: guaranteed shiny
             let x = Double.random(in: 0..<1, using: &rng)
-            return x < MonsterVariant.shinyChance ? .shiny : x < MonsterVariant.shinyChance + MonsterVariant.crownedChance ? .crowned : .normal
+            let shiny = MonsterVariant.shinyChance * week.variantBoost
+            let crowned = MonsterVariant.crownedChance * week.variantBoost
+            if x < shiny { pity = 0; return .shiny }
+            return x < shiny + crowned ? .crowned : .normal
         }
+        func kind() -> Int { week.onlyKind ?? Int.random(in: 0..<3, using: &rng) }
         func make(_ sp: Species, variant: MonsterVariant, hpMul: Double, atkMul: Double, x: Double, timer: Double) -> Monster {
             let mhp = hp * hpMul * (variant == .crowned ? 3 : 1)
             var m = Monster(kind: min(sp.kind, 2), name: variant == .normal ? sp.name : "\(variant.label) \(sp.name)",
@@ -207,13 +219,13 @@ enum Engine {
             if p.isEndless { m.name = "\(boss.name)의 메아리" }
             list.append(m)
             for i in 0..<2 {
-                let sp = Species.of(region: speciesRegion(), kind: Int.random(in: 0..<2, using: &rng))
+                let sp = Species.of(region: speciesRegion(), kind: week.onlyKind ?? Int.random(in: 0..<2, using: &rng))
                 list.append(make(sp, variant: roll(), hpMul: 1, atkMul: 1, x: spawnX + slotSpacing * Double(i + 1) + 20, timer: 1.5))
             }
         } else {
             let count = Int.random(in: 2...4, using: &rng)
             for i in 0..<count {
-                let k = Int.random(in: 0..<3, using: &rng)
+                let k = kind()
                 let sp = Species.of(region: speciesRegion(), kind: k)
                 list.append(make(sp, variant: roll(), hpMul: k == 2 ? 1.4 : 1, atkMul: 1,
                                  x: spawnX + slotSpacing * Double(i), timer: Double.random(in: 0.8...1.6, using: &rng)))
@@ -225,6 +237,7 @@ enum Engine {
             }
         }
         b.monsters = list
+        p.shinyPity = pity
     }
 
     // MARK: Fight
@@ -238,34 +251,38 @@ enum Engine {
         }
 
         // 2. Heroes act.
+        let week = WeeklyRule.current()
         for hi in b.heroes.indices where b.heroes[hi].alive {
+            let te = p.heroes[hi].traitEffect
+            let critChance = 0.1 + te.crit
+            var dealt = 0.0
             b.heroes[hi].attackTimer -= dt
             b.heroes[hi].skillTimer -= dt
             let inRange = b.monsters.indices.filter { b.monsters[$0].x <= attackRange && b.monsters[$0].hp > 0 }
             guard let front = inRange.first else { continue }
             let cls = p.heroes[hi].heroClass
-            let atk = p.heroes[hi].attack * Move.bonus(p)
+            let atk = p.heroes[hi].attack * Move.bonus(p) * p.tactic.atk * week.heroAttack(cls)
             let engaged = b.monsters[front].x <= frontSlotX + 2
             if cls == .warrior && !engaged { continue }
 
             if b.heroes[hi].skillTimer <= 0 {
-                b.heroes[hi].skillTimer = cls.skillCooldown
+                b.heroes[hi].skillTimer = cls.skillCooldown * te.cooldown
                 b.heroes[hi].lastSkillAt = b.time
                 b.heroes[hi].attackTimer = max(b.heroes[hi].attackTimer, cls.attackInterval * 0.5)
                 switch cls {
                 case .warrior:
-                    hit(front, atk * 3, &b, rng: &rng, effects: effects)
+                    dealt += hit(front, atk * 3, &b, rng: &rng, effects: effects, crit: critChance)
                     if effects { b.effects.append(Effect(kind: .text(cls.skillName), x: heroX[hi], born: b.time)) }
                 case .archer:
                     for _ in 0..<3 {
                         let t = inRange.randomElement(using: &rng)!
                         if effects { b.effects.append(Effect(kind: .arrow(fromX: heroX[hi], toX: b.monsters[t].x), x: heroX[hi], born: b.time)) }
-                        hit(t, atk, &b, rng: &rng, effects: effects)
+                        dealt += hit(t, atk, &b, rng: &rng, effects: effects, crit: critChance)
                     }
                     if effects { b.effects.append(Effect(kind: .text(cls.skillName), x: heroX[hi], born: b.time)) }
                 case .mage:
                     for t in inRange {
-                        hit(t, atk * 1.5, &b, rng: &rng, effects: effects)
+                        dealt += hit(t, atk * 1.5, &b, rng: &rng, effects: effects, crit: critChance)
                         if effects { b.effects.append(Effect(kind: .burst, x: b.monsters[t].x, born: b.time)) }
                     }
                     if effects { b.effects.append(Effect(kind: .text(cls.skillName), x: heroX[hi], born: b.time)) }
@@ -280,7 +297,10 @@ enum Engine {
                     case .mage: b.effects.append(Effect(kind: .bolt(fromX: heroX[hi], toX: b.monsters[front].x), x: heroX[hi], born: b.time))
                     }
                 }
-                hit(front, atk, &b, rng: &rng, effects: effects)
+                dealt += hit(front, atk, &b, rng: &rng, effects: effects, crit: critChance)
+            }
+            if te.lifesteal > 0, dealt > 0 {
+                b.heroes[hi].hp = min(p.heroes[hi].maxHP, b.heroes[hi].hp + dealt * te.lifesteal)
             }
         }
 
@@ -299,10 +319,11 @@ enum Engine {
             guard b.monsters[mi].x <= target + 1 else { continue }
             b.monsters[mi].attackTimer -= dt
             guard b.monsters[mi].attackTimer <= 0 else { continue }
-            b.monsters[mi].attackTimer = b.monsters[mi].isBoss ? 1.8 : 1.5
+            b.monsters[mi].attackTimer = (b.monsters[mi].isBoss ? 1.8 : 1.5) * week.enemyAttackSpeed
             b.monsters[mi].lastAttackAt = b.time
             guard let victim = b.heroes.indices.first(where: { b.heroes[$0].alive }) else { break }
             let dmg = b.monsters[mi].atk * Double.random(in: 0.85...1.15, using: &rng)
+                * p.heroes[victim].traitEffect.damageTaken * p.tactic.damageTaken
             b.heroes[victim].hp -= dmg
             b.heroes[victim].lastHitAt = b.time
             if effects { b.effects.append(Effect(kind: .heroDamage(Int(dmg.rounded())), x: heroX[victim], born: b.time)) }
@@ -352,19 +373,22 @@ enum Engine {
                 let maxHP = p.heroes[i].maxHP
                 b.heroes[i].hp = min(maxHP, max(b.heroes[i].hp, 0) + maxHP * 0.25)
             }
-            b.phase = .spawning(until: b.time + Engine.marchSeconds)
+            b.phase = .spawning(until: b.time + Engine.marchSeconds * p.tactic.march * week.march)
         }
     }
 
-    static func hit<R: RandomNumberGenerator>(_ index: Int, _ base: Double, _ b: inout Battle, rng: inout R, effects: Bool) {
-        guard b.monsters.indices.contains(index), b.monsters[index].hp > 0 else { return }
-        let crit = Double.random(in: 0..<1, using: &rng) < 0.1
+    @discardableResult
+    static func hit<R: RandomNumberGenerator>(_ index: Int, _ base: Double, _ b: inout Battle, rng: inout R, effects: Bool,
+                                              crit critChance: Double = 0.1) -> Double {
+        guard b.monsters.indices.contains(index), b.monsters[index].hp > 0 else { return 0 }
+        let crit = Double.random(in: 0..<1, using: &rng) < critChance
         let dmg = base * Double.random(in: 0.9...1.1, using: &rng) * (crit ? 2 : 1)
         b.monsters[index].hp -= dmg
         b.monsters[index].lastHitAt = b.time
         if effects {
             b.effects.append(Effect(kind: .damage(Int(dmg.rounded()), crit: crit), x: b.monsters[index].x, born: b.time))
         }
+        return dmg
     }
 
     // MARK: Rewards & loot
@@ -373,15 +397,30 @@ enum Engine {
         p.totalKills += 1
         report.kills += 1
         record(m, &p, report: &report)
+        let week = WeeklyRule.current()
+        let wk = WeeklyRule.weekKey()
+        if p.weekKey != wk { p.weekKey = wk; p.weekKills = 0; p.weekClaimed = false }
+        p.weekKills += 1
+        if !p.weekClaimed && p.weekKills >= WeeklyRule.goalKills {
+            p.weekClaimed = true
+            p.memories += 1
+            report.weeklyGoal = true
+        }
+        let traitGold = p.heroes.reduce(1.0) { $0 * $1.traitEffect.gold }
         let variantGold = m.isGuest ? 15.0 : m.variant == .crowned ? 5 : m.variant == .shiny ? 3 : 1
         let g = Int((Region.gold(region: p.regionIndex, wave: p.wave) * (m.isBoss ? 12 : 1) * variantGold
-                     * Dex.goldBonus(p) * Move.bonus(p)).rounded())
+                     * Dex.goldBonus(p) * Move.bonus(p) * p.tactic.gold * week.gold * traitGold).rounded())
         p.gold += g
         report.goldGained += g
 
-        let dropChance = m.isBoss || m.isGuest ? 1.0 : m.variant == .normal ? 0.16 : 0.6
+        let baseDrop = m.isBoss || m.isGuest ? 1.0 : m.variant == .normal ? 0.16 : 0.6
+        let dropChance = min(1, baseDrop * p.tactic.drops * week.drops)
         guard Double.random(in: 0..<1, using: &rng) < dropChance else { return }
-        let item = makeItem(region: p.regionIndex, boss: m.isBoss || m.isGuest, floor: p.isEndless ? p.wave : 0, rng: &rng)
+        p.legendaryPity += 1
+        let force = p.legendaryPity >= Pity.legendaryDrops
+        let item = makeItem(region: p.regionIndex, boss: m.isBoss || m.isGuest, floor: p.isEndless ? p.wave : 0,
+                            forceLegendary: force, rng: &rng)
+        if item.rarity == .legendary { p.legendaryPity = 0 }
         if item.rarity == .legendary {
             Journal.unlock("first_legendary", in: &p, report: &report)
             if let u = item.unique {
@@ -410,6 +449,7 @@ enum Engine {
         if var e = p.dex[key] {
             e.count += 1
             p.dex[key] = e
+            p.shards += Pity.shards(for: m.variant, guest: m.isGuest)
             return
         }
         p.dex[key] = DexEntry(count: 1, first: Date())
@@ -432,9 +472,10 @@ enum Engine {
     static let weaponNames = ["바늘 검", "압정 창", "클립 활", "크레용 지팡이", "커터 단검", "자 몽둥이"]
     static let armorNames = ["골무 투구", "병뚜껑 방패", "포스트잇 망토", "지우개 갑옷", "단추 방패", "실타래 로브"]
 
-    static func makeItem<R: RandomNumberGenerator>(region: Int, boss: Bool, floor: Int = 0, rng: inout R) -> Item {
-        let slot: GearSlot = Bool.random(using: &rng) ? .weapon : .armor
-        let rarity = rollRarity(boss: boss, rng: &rng)
+    static func makeItem<R: RandomNumberGenerator>(region: Int, boss: Bool, floor: Int = 0, forceLegendary: Bool = false,
+                                                   slot forcedSlot: GearSlot? = nil, rng: inout R) -> Item {
+        let slot: GearSlot = forcedSlot ?? (Bool.random(using: &rng) ? .weapon : .armor)
+        let rarity = forceLegendary ? .legendary : rollRarity(boss: boss, rng: &rng)
         let base = Region.gearBase(region: min(region, Region.storyRegions), slot: slot) * pow(1.04, Double(floor))
         var power = max(1, Int((base * rarity.multiplier * Double.random(in: 0.85...1.15, using: &rng)).rounded()))
         let noun = (slot == .weapon ? weaponNames : armorNames).randomElement(using: &rng)!

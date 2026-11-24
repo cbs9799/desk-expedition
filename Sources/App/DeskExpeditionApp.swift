@@ -38,6 +38,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        if let i = args.firstIndex(of: "--bench"), args.indices.contains(i + 1) {
+            Snapshot.bench(seconds: Double(args[i + 1]) ?? 60, fps: args.contains("--fps30") ? 30 : 60)
+            NSApp.terminate(nil)
+            return
+        }
         if let i = args.firstIndex(of: "--soak"), args.indices.contains(i + 1) {
             Snapshot.soak(seconds: Double(args[i + 1]) ?? 600)
             NSApp.terminate(nil)
@@ -55,7 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mcp?.start()
         strip = StripWindowController(store: store, onOpenHQ: { [weak self] in self?.openHQ() })
         hq = HQWindowController(store: store)
-        if args.contains("--open-hq") || store.lastOffline != nil { openHQ() }
+        if args.contains("--open-hq") || store.lastOffline != nil || OnboardingView.needed || !store.unseenDiary.isEmpty { openHQ() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

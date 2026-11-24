@@ -103,7 +103,7 @@ final class EngineTests: XCTestCase {
         var b = Engine.newBattle(for: p)
         var variants = Set<MonsterVariant>(), guests = 0
         for _ in 0..<3000 {
-            Engine.spawnWave(p, &b, rng: &rng)
+            Engine.spawnWave(&p, &b, rng: &rng)
             for m in b.monsters {
                 XCTAssertEqual(Species.all[m.species].region, 0)
                 variants.insert(m.variant)
@@ -114,7 +114,7 @@ final class EngineTests: XCTestCase {
         XCTAssertTrue(variants.contains(.shiny))
         XCTAssertGreaterThan(guests, 5)
         p.wave = Region.wavesPerRegion
-        Engine.spawnWave(p, &b, rng: &rng)
+        Engine.spawnWave(&p, &b, rng: &rng)
         XCTAssertTrue(b.monsters.first?.isBoss ?? false)
     }
 
@@ -230,5 +230,87 @@ final class EngineTests: XCTestCase {
         XCTAssertEqual(r?.headers["authorization"], "Bearer abc")
         XCTAssertEqual(r?.body, Data("{}".utf8))
         XCTAssertNil(HTTPRequest(Data("POST /mcp HTTP/1.1\r\nContent-Length: 10\r\n\r\n{}".utf8)), "waits for full body")
+    }
+
+    // MARK: 0.2.7 systems
+
+    @MainActor
+    func testTraitsUnlockAndApply() {
+        var p = Progress()
+        p.heroes[0].level = 25
+        let store = GameStore(progress: p, persist: false)
+        XCTAssertEqual(store.progress.heroes[0].pendingTraitTier, 0)
+        let hp0 = store.progress.heroes[0].maxHP
+        store.chooseTrait(0, tier: 0, option: 0)            // 강철 골무: HP +25%
+        XCTAssertEqual(store.progress.heroes[0].maxHP, hp0 * 1.25, accuracy: 0.01)
+        XCTAssertEqual(store.progress.heroes[0].pendingTraitTier, 1)
+        store.chooseTrait(0, tier: 2, option: 0)            // Lv50 tier is locked at Lv25
+        XCTAssertNil(store.progress.heroes[0].trait(tier: 2))
+        XCTAssertEqual(store.progress.heroes[0].chosenTraitNames.count, 1)
+    }
+
+    func testTacticsShiftRiskAndReward() {
+        XCTAssertGreaterThan(Tactic.charge.atk, Tactic.balanced.atk)
+        XCTAssertLessThan(Tactic.careful.damageTaken, 1)
+        XCTAssertGreaterThan(Tactic.treasure.gold, 1)
+        // Same kill, same RNG seed: treasure tactic pays 40% more gold.
+        let m = Monster(kind: 0, name: "x", maxHP: 1, hp: 0, atk: 1, x: 0, isBoss: false, attackTimer: 1)
+        var a = Progress(), b = Progress()
+        b.tactic = .treasure
+        var r1 = SplitMix64(seed: 4), r2 = SplitMix64(seed: 4)
+        var rep1 = TickReport(), rep2 = TickReport()
+        Engine.reward(for: m, &a, rng: &r1, report: &rep1)
+        Engine.reward(for: m, &b, rng: &r2, report: &rep2)
+        XCTAssertGreaterThan(b.gold, a.gold)
+    }
+
+    func testShinyPityAndLegendaryPity() {
+        var rng = SplitMix64(seed: 8)
+        var p = Progress()
+        p.shinyPity = Pity.shinySpawns - 1
+        var b = Engine.newBattle(for: p)
+        Engine.spawnWave(&p, &b, rng: &rng)
+        XCTAssertEqual(b.monsters.first?.variant, .shiny, "pity forces a shiny")
+        XCTAssertEqual(p.shinyPity, b.monsters.dropFirst().count == 0 ? 0 : p.shinyPity)
+        let forced = Engine.makeItem(region: 0, boss: false, forceLegendary: true, slot: .armor, rng: &rng)
+        XCTAssertEqual(forced.rarity, .legendary)
+        XCTAssertEqual(forced.slot, .armor)
+    }
+
+    @MainActor
+    func testShardsExchangeAndAutoTidy() {
+        var p = Progress()
+        p.shards = Pity.legendaryPrice
+        let store = GameStore(progress: p, persist: false)
+        let item = store.exchangeShards(slot: .weapon)
+        XCTAssertEqual(item?.rarity, .legendary)
+        XCTAssertEqual(store.progress.shards, 0)
+        XCTAssertNil(store.exchangeShards(slot: .weapon), "not enough shards")
+
+        var rng = SplitMix64(seed: 12)
+        for _ in 0..<20 { store.progress.bag.append(Engine.makeItem(region: 0, boss: false, rng: &rng)) }
+        store.autoTidy()
+        XCTAssertTrue(store.progress.heroes[2].weapon != nil || store.progress.heroes[1].weapon != nil, "upgrades equipped")
+        XCTAssertLessThan(store.progress.bag.count, 21)
+    }
+
+    func testWeeklyRuleIsStableWithinAWeek() {
+        let monday = ISO8601DateFormatter().date(from: "2026-11-23T09:00:00Z")!
+        let sunday = monday.addingTimeInterval(6 * 86400)
+        XCTAssertEqual(WeeklyRule.current(monday), WeeklyRule.current(sunday))
+        XCTAssertEqual(WeeklyRule.weekKey(monday), WeeklyRule.weekKey(sunday))
+        XCTAssertNotEqual(WeeklyRule.weekKey(monday), WeeklyRule.weekKey(monday.addingTimeInterval(7 * 86400)))
+    }
+
+    @MainActor
+    func testAIDiaryPersistsAndSummarizes() throws {
+        let store = GameStore(progress: Progress(), persist: false)
+        store.aiAct("단추 Lv.2", reason: "전사가 약해서")
+        XCTAssertEqual(store.unseenDiary.count, 1)
+        store.markDiarySeen()
+        XCTAssertTrue(store.unseenDiary.isEmpty)
+        let data = try JSONEncoder().encode(store.progress)
+        let back = try JSONDecoder().decode(Progress.self, from: data)
+        XCTAssertEqual(back.aiDiary.first?.text, "단추 Lv.2 — 전사가 약해서")
     }
 }

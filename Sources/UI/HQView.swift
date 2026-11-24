@@ -5,6 +5,8 @@ struct HQView: View {
     @Environment(GameStore.self) private var store
     @State private var selectedID: UUID?
     @State private var tab = 0
+    @State private var showOnboarding = OnboardingView.needed
+    @Environment(\.staticRendering) private var hqStatic
     var initialTab: Int? = nil
 
     var body: some View {
@@ -14,8 +16,10 @@ struct HQView: View {
             if let report = store.lastOffline {
                 offlineBanner(report)
             }
+            if !store.unseenDiary.isEmpty { captainBanner(store.unseenDiary) }
             SegmentRow(options: [0, 1, 2, 3], selected: initialTab ?? tab,
-                       label: { ["원정대", "도감 \(p.dex.count)/\(Species.slotCount)", "일지 \(p.journal.count)장", "기록"][$0] },
+                       label: { [String(localized: "원정대"), String(localized: "도감 \(p.dex.count)/\(Species.slotCount)"),
+                                 String(localized: "일지 \(p.journal.count)장"), String(localized: "기록")][$0] },
                        onSelect: { tab = $0 })
             switch initialTab ?? tab {
             case 1: DexView()
@@ -36,6 +40,14 @@ struct HQView: View {
         .frame(width: 920, height: 660, alignment: .top)
         .background(Theme.bg)
         .foregroundStyle(Theme.text)
+        .overlay {
+            if showOnboarding && !hqStatic {
+                ZStack {
+                    Color.black.opacity(0.55)
+                    OnboardingView { OnboardingView.finish(); showOnboarding = false }
+                }
+            }
+        }
     }
 
     private func header(_ p: Progress) -> some View {
@@ -43,6 +55,8 @@ struct HQView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("원정 본부").font(.system(size: 22, weight: .heavy, design: .rounded))
                 Text(p.isBossWave ? "\(p.region.name) · \(p.isEndless ? "\(p.wave)층 " : "")보스전" : "\(p.region.name) · \(p.stageText)")
+                Text("\(p.tactic.icon) \(p.tactic.name) · 📅 \(WeeklyRule.current().name)")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
                     .font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
                 Spacer()
                 Label("\(p.totalKills.formatted())", systemImage: "flame.fill")
@@ -51,10 +65,27 @@ struct HQView: View {
                     .font(.system(size: 18, weight: .heavy, design: .rounded)).foregroundStyle(Theme.gold)
             }
             SegmentRow(options: Array(Region.all.indices), selected: p.regionIndex,
-                       label: { i in i <= p.unlockedRegion ? (Region.all[i].endless ? "∞ \(Region.all[i].name)" : "\(i + 1). \(Region.all[i].name)") : "🔒 \(Region.all[i].endless ? "∞" : "\(i + 1)")" },
+                       label: { i in i <= p.unlockedRegion ? (Region.all[i].endless ? "∞ \(L10n.t(Region.all[i].name))" : "\(i + 1). \(L10n.t(Region.all[i].name))") : "🔒 \(Region.all[i].endless ? "∞" : "\(i + 1)")" },
                        enabled: { $0 <= p.unlockedRegion },
                        onSelect: { store.selectRegion($0) })
         }
+    }
+
+    /// "밤사이 대장이 한 일": what the connected AI did since HQ was last opened.
+    private func captainBanner(_ entries: [DiaryEntry]) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text("🤖").font(.system(size: 16))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("AI 원정대장이 한 일 \(entries.count)개").font(.system(size: 12, weight: .heavy, design: .rounded))
+                ForEach(entries.suffix(3)) { e in
+                    Text("· \(e.text)").font(.system(size: 11, design: .rounded)).foregroundStyle(Color(hex: 0x9CF4FF)).lineLimit(1)
+                }
+            }
+            Spacer()
+            Button("확인") { store.markDiarySeen() }.buttonStyle(GameButtonStyle(compact: true))
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color(hex: 0x1F3340)))
     }
 
     private func offlineBanner(_ r: OfflineReport) -> some View {
@@ -129,13 +160,13 @@ private struct HeroCard: View {
                     }
                     Text("Lv. \(hero.level)").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundStyle(Theme.gold)
                     if staticRendering {
-                        Text("꾸미기: \(Accessory.all[hero.accessory ?? 0])")
+                        Text("꾸미기: \(L10n.t(Accessory.all[hero.accessory ?? 0]))")
                             .font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
                     } else {
                     Picker("꾸미기", selection: Binding(
                         get: { hero.accessory ?? 0 },
                         set: { store.setAccessory(index, $0) })) {
-                        ForEach(Accessory.all.indices, id: \.self) { i in Text(Accessory.all[i]).tag(i) }
+                        ForEach(Accessory.all.indices, id: \.self) { i in Text(L10n.t(Accessory.all[i])).tag(i) }
                     }
                     .pickerStyle(.menu)
                     .controlSize(.small)
@@ -146,6 +177,7 @@ private struct HeroCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            TraitRow(index: index, hero: hero)
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text("체력").foregroundStyle(Theme.dim)
@@ -252,5 +284,38 @@ extension EnvironmentValues {
     var staticRendering: Bool {
         get { self[StaticRenderingKey.self] }
         set { self[StaticRenderingKey.self] = newValue }
+    }
+}
+
+/// 영웅 특성: chosen traits, and the two options when a tier is unlocked.
+private struct TraitRow: View {
+    @Environment(GameStore.self) private var store
+    let index: Int
+    let hero: HeroProgress
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let tier = hero.pendingTraitTier {
+                let (a, b) = Traits.options(hero.heroClass, tier: tier)
+                Text("★ Lv.\(Traits.tiers[tier]) 특성을 골라 주세요").font(.system(size: 10, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Theme.gold)
+                HStack(spacing: 4) {
+                    ForEach([(0, a), (1, b)], id: \.0) { opt, t in
+                        Button { store.chooseTrait(index, tier: tier, option: opt) } label: {
+                            VStack(spacing: 1) {
+                                Text(t.name).font(.system(size: 10, weight: .heavy, design: .rounded))
+                                Text(t.desc).font(.system(size: 9, design: .rounded)).foregroundStyle(Theme.dim)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(GameButtonStyle(color: Theme.panelHi, compact: true))
+                    }
+                }
+            } else {
+                let names = hero.chosenTraitNames
+                Text(names.isEmpty ? "특성: Lv.10에 열려요" : "특성: " + names.joined(separator: " · "))
+                    .font(.system(size: 10, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim).lineLimit(1)
+            }
+        }
     }
 }
