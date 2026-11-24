@@ -8,8 +8,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.2.15"
-    CURRENT_PROJECT_VERSION: "17"
+    MARKETING_VERSION: "0.2.16"
+    CURRENT_PROJECT_VERSION: "18"
 targets:
   DeskExpedition:
     type: application
@@ -44,13 +44,10 @@ targets:
     entitlements:
       path: Sources/DeskExpedition.entitlements
       properties:
-        com.apple.security.app-sandbox: true
-        com.apple.security.network.server: true
-        com.apple.security.network.client: true
-        # Sparkle 2 in a sandboxed app: talk to its installer/status XPC services.
-        com.apple.security.temporary-exception.mach-lookup.global-name:
-          - $(PRODUCT_BUNDLE_IDENTIFIER)-spks
-          - $(PRODUCT_BUNDLE_IDENTIFIER)-spki
+        # Direct (Developer ID) build is not sandboxed so the in-app AI chat can run the user's
+        # subscription CLIs (claude / codex). Hardened runtime + notarization still apply.
+        # A Mac App Store build would need the sandbox back (and a different chat backend).
+        com.apple.security.app-sandbox: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: club.lemongrove.deskexpedition

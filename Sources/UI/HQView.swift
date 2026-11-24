@@ -17,14 +17,17 @@ struct HQView: View {
                 offlineBanner(report)
             }
             if !store.unseenDiary.isEmpty { captainBanner(store.unseenDiary) }
-            SegmentRow(options: [0, 1, 2, 3], selected: initialTab ?? tab,
+            SegmentRow(options: [0, 1, 2, 3, 4], selected: initialTab ?? tab,
                        label: { [String(localized: "원정대"), String(localized: "도감 \(p.dex.count)/\(Species.slotCount)"),
-                                 String(localized: "일지 \(p.journal.count)장"), String(localized: "기록")][$0] },
+                                 String(localized: "일지 \(p.journal.count)장"), String(localized: "기록"),
+                                 String(localized: "AI 대장")][$0] },
+                       icon: { $0 == 4 ? .robot : nil },
                        onSelect: { tab = $0 })
             switch initialTab ?? tab {
             case 1: DexView()
             case 2: JournalView()
             case 3: MaybeScroll { RecordsView() }
+            case 4: ChatView()
             default:
                 MaybeScroll {
                     VStack(alignment: .leading, spacing: 14) {

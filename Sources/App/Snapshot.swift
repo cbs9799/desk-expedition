@@ -161,6 +161,32 @@ enum Snapshot {
         print("hq-live written: \(target.path)")
     }
 
+    /// `--chat-test <claude|codex> <prompt> [<follow-up>]`: real round trip through the in-app chat engine
+    /// (subscription CLI + this app's MCP server) on a demo save; prints the transcript.
+    static func chatTest(provider: String, prompts: [String]) {
+        let store = GameStore.shared
+        let mcp = MCPServer(store: store)
+        mcp.start()
+        let chat = AIChat.shared
+        chat.detect()
+        let deadline0 = Date().addingTimeInterval(15)
+        while chat.available.isEmpty && Date() < deadline0 { RunLoop.current.run(until: Date().addingTimeInterval(0.2)) }
+        print("available:", chat.available.map { "\($0.key.rawValue)=\($0.value)" }.sorted())
+        if let p = AIChat.Provider(rawValue: provider) { chat.select(p) }
+        let gold0 = store.progress.gold
+        for prompt in prompts {
+            chat.send(prompt)
+            let deadline = Date().addingTimeInterval(240)
+            while (chat.running || chat.messages.last?.role == .user) && Date() < deadline {
+                RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+                if !chat.running && chat.messages.last?.role != .user { break }
+            }
+        }
+        for m in chat.messages { print("[\(m.role)] \(m.text.replacingOccurrences(of: "\n", with: " ").prefix(220))") }
+        print("gold \(gold0) → \(store.progress.gold), levels \(store.progress.heroes.map(\.level)), aiLog \(store.aiLog.count)")
+        _ = mcp
+    }
+
     /// `--frames <dir>`: dumps 0.1 s strip frames for eyeballing animation.
     static func dumpFrames(to dir: URL, seconds: Double = 12, showcase: Bool = false) {
         let store = demoStore()

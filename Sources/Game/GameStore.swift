@@ -457,10 +457,7 @@ final class GameStore {
     // MARK: Persistence
 
     private static var saveURL: URL {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("DeskExpedition", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("save.json")
+        AppPaths.support.appendingPathComponent("save.json")
     }
 
     func save() {

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		00435DBE9F790FE290797661 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 8CE13EBA92F309793F8E5A1B /* Localizable.xcstrings */; };
 		00B9F088543E985879B7A147 /* accessories.json in Resources */ = {isa = PBXBuildFile; fileRef = F2043A1B298BF7BDE12BFBC6 /* accessories.json */; };
+		00E907A0A56851E63F3A51CF /* AppPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B9AF132BAE27250D6A1C63 /* AppPaths.swift */; };
 		026A20CCAFEEE08B6DC44CB1 /* props2_notebook.png in Resources */ = {isa = PBXBuildFile; fileRef = 996A3F2CB9244857DF7DCF8C /* props2_notebook.png */; };
 		02D6DF547D7E380AB1EB7B48 /* mon_sharpener_giant.png in Resources */ = {isa = PBXBuildFile; fileRef = 3751BD027A9DB63B18B28D32 /* mon_sharpener_giant.png */; };
 		03F75E05B082B034999ED58D /* DeskExpeditionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D0566465A306589B246A54 /* DeskExpeditionApp.swift */; };
@@ -32,6 +33,7 @@
 		1C5F354D44001A92D58332BB /* accessories.png in Resources */ = {isa = PBXBuildFile; fileRef = EF0680C0EFD7733D3D1F8862 /* accessories.png */; };
 		1D3EDBAEB0336104484629F4 /* mon_cactus_golem.json in Resources */ = {isa = PBXBuildFile; fileRef = 86E5A143C157DEFE8F581947 /* mon_cactus_golem.json */; };
 		1EC8A8877BE9EF78B362A1DC /* props2_notebook.json in Resources */ = {isa = PBXBuildFile; fileRef = A0A8516DBC795A5742D2D086 /* props2_notebook.json */; };
+		2051FED4A72B660812E18013 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A49B8A340D39ADAD3CA8FD /* ChatView.swift */; };
 		20B27720C41F57DDCCF3942A /* CosmeticShop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98AB83711902EA8CEDD4724A /* CosmeticShop.swift */; };
 		222080ED02D0452F1205DC5E /* mon_guest_usb_fairy.json in Resources */ = {isa = PBXBuildFile; fileRef = CA9AA669B71966FDE21382EF /* mon_guest_usb_fairy.json */; };
 		22B2112C7BA5F2C5D4494CEE /* mon_cursor_ghost.json in Resources */ = {isa = PBXBuildFile; fileRef = 11DDB930340C590FDF686E98 /* mon_cursor_ghost.json */; };
@@ -85,6 +87,7 @@
 		7DB9AF05C2FC99FDF243C13A /* props_planter.json in Resources */ = {isa = PBXBuildFile; fileRef = 6214AF1D1C502481AD550D08 /* props_planter.json */; };
 		7F181297D039F920B4977999 /* props2_planter.png in Resources */ = {isa = PBXBuildFile; fileRef = 68088F8A907C38CE9B251E6E /* props2_planter.png */; };
 		815C9268D617839063B2DF2A /* mon_stapler_king.png in Resources */ = {isa = PBXBuildFile; fileRef = C99A6E12253DC614BC3400F3 /* mon_stapler_king.png */; };
+		81E62E50DC924777F9567782 /* AIChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8191A0C51A10722E600B6E61 /* AIChat.swift */; };
 		82AC327C1CDC504FBF73D083 /* icons.json in Resources */ = {isa = PBXBuildFile; fileRef = A89F2530336DCCCC1BCC9B47 /* icons.json */; };
 		8317411880BA34418FE5510E /* strip_monitor.png in Resources */ = {isa = PBXBuildFile; fileRef = A5C90C2E146DF6610F95F334 /* strip_monitor.png */; };
 		83980BB5B22960C3D165C58B /* hero_warrior.json in Resources */ = {isa = PBXBuildFile; fileRef = BEBAB14F5760022F87FDEF19 /* hero_warrior.json */; };
@@ -109,6 +112,7 @@
 		9F38C668C2D41E4644255C4D /* mon_succulent_king.json in Resources */ = {isa = PBXBuildFile; fileRef = D81456633DC96B8123AA4340 /* mon_succulent_king.json */; };
 		9FEE77C4A7AB883B36155B00 /* Collection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146BDB33F293273015841171 /* Collection.swift */; };
 		A2A44C0F4FF9B6292C878F46 /* mon_guest_sugar_prince.png in Resources */ = {isa = PBXBuildFile; fileRef = BF6262F2EFC982BD85D9348F /* mon_guest_sugar_prince.png */; };
+		A913A8693B93B762946F9CA0 /* Migration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ACCF9445C94BFCD901A7E17 /* Migration.swift */; };
 		AD40B10110EC22FA97680017 /* CollectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D63ADE6DF4D990CA52229E1E /* CollectionViews.swift */; };
 		AF471B1DE9170AE8F77A16EE /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8046CE30A897467640D5B7BD /* Models.swift */; };
 		B0F0BCE75E15890370DF29E7 /* strip_notebook.png in Resources */ = {isa = PBXBuildFile; fileRef = 5792C0A2BF3986229F2F828E /* strip_notebook.png */; };
@@ -186,6 +190,7 @@
 		00BCA1E988174A7018BA602D /* camp.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = camp.json; sourceTree = "<group>"; };
 		0338CBB7E6B3DA25C0A5400B /* mon_coffee_slime.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mon_coffee_slime.json; sourceTree = "<group>"; };
 		04285BF201458ADD7D0627ED /* bg_mug_ground.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = bg_mug_ground.png; sourceTree = "<group>"; };
+		0ACCF9445C94BFCD901A7E17 /* Migration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migration.swift; sourceTree = "<group>"; };
 		0D0C0529E283DDD10E7EFAE7 /* bg_drawer_far.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = bg_drawer_far.png; sourceTree = "<group>"; };
 		0E98A84885457A0121C5A39E /* props_pencilcup.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = props_pencilcup.png; sourceTree = "<group>"; };
 		10F159C3F77948F4C1C8D2AF /* trophies.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = trophies.png; sourceTree = "<group>"; };
@@ -252,6 +257,7 @@
 		790D9186230D0F33AD410497 /* mon_mug_octopus.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mon_mug_octopus.json; sourceTree = "<group>"; };
 		7BD7AD8CBE3A12F2C713719D /* mon_keycap_golem.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mon_keycap_golem.png; sourceTree = "<group>"; };
 		8046CE30A897467640D5B7BD /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		8191A0C51A10722E600B6E61 /* AIChat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIChat.swift; sourceTree = "<group>"; };
 		83385412C4DDAF6EFC80C956 /* hero_mage.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = hero_mage.json; sourceTree = "<group>"; };
 		86E5A143C157DEFE8F581947 /* mon_cactus_golem.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mon_cactus_golem.json; sourceTree = "<group>"; };
 		872F53837059514250A9E1B5 /* mon_moss_slime.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mon_moss_slime.png; sourceTree = "<group>"; };
@@ -297,6 +303,7 @@
 		C0D9FAC5C46123BF619A4C1F /* MCPHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPHandler.swift; sourceTree = "<group>"; };
 		C14E8594334DC8865C643CC1 /* Offscreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Offscreen.swift; sourceTree = "<group>"; };
 		C53D2F3305D98B8DFB672074 /* ai-autoplay.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "ai-autoplay.sh"; sourceTree = "<group>"; };
+		C6B9AF132BAE27250D6A1C63 /* AppPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPaths.swift; sourceTree = "<group>"; };
 		C88855DBDD9F9C48D6580B23 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C99A6E12253DC614BC3400F3 /* mon_stapler_king.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mon_stapler_king.png; sourceTree = "<group>"; };
 		CA9AA669B71966FDE21382EF /* mon_guest_usb_fairy.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mon_guest_usb_fairy.json; sourceTree = "<group>"; };
@@ -314,6 +321,7 @@
 		D81456633DC96B8123AA4340 /* mon_succulent_king.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mon_succulent_king.json; sourceTree = "<group>"; };
 		D8E05843A0DA1AD36CB5601E /* items_unique_a.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = items_unique_a.png; sourceTree = "<group>"; };
 		D940F685F38EFB5FBD9554CC /* props_monitor.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = props_monitor.png; sourceTree = "<group>"; };
+		D9A49B8A340D39ADAD3CA8FD /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		DAAFCFA206BB9C0E18F0CF9B /* mon_moss_slime.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mon_moss_slime.json; sourceTree = "<group>"; };
 		DDDA671E081DD04AAAE44675 /* items_unique_a.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = items_unique_a.json; sourceTree = "<group>"; };
 		DEA3ADEE05AFAA49EFA7A01E /* mon_cactus_golem.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mon_cactus_golem.png; sourceTree = "<group>"; };
@@ -434,6 +442,7 @@
 		A0849E34072FBC94892A1C81 /* AI */ = {
 			isa = PBXGroup;
 			children = (
+				8191A0C51A10722E600B6E61 /* AIChat.swift */,
 				EDF96BA94A586538FB9E1776 /* MCPBridge.swift */,
 				C0D9FAC5C46123BF619A4C1F /* MCPHandler.swift */,
 				BD4D6B6A97AAA725781B0C15 /* MCPServer.swift */,
@@ -445,6 +454,7 @@
 			isa = PBXGroup;
 			children = (
 				748581ED6A2513BAF9060234 /* BulkSellMenu.swift */,
+				D9A49B8A340D39ADAD3CA8FD /* ChatView.swift */,
 				D63ADE6DF4D990CA52229E1E /* CollectionViews.swift */,
 				682CD81320BB9DCDC2F22780 /* Components.swift */,
 				9F1715D69894E010F34993E4 /* HQView.swift */,
@@ -598,8 +608,10 @@
 		E8D7FD6FF5615259451430AF /* App */ = {
 			isa = PBXGroup;
 			children = (
+				C6B9AF132BAE27250D6A1C63 /* AppPaths.swift */,
 				98AB83711902EA8CEDD4724A /* CosmeticShop.swift */,
 				27D0566465A306589B246A54 /* DeskExpeditionApp.swift */,
+				0ACCF9445C94BFCD901A7E17 /* Migration.swift */,
 				C14E8594334DC8865C643CC1 /* Offscreen.swift */,
 				D6FDBD5CDBD08A11A235644F /* Snapshot.swift */,
 				29C62DC762B2C3DCDC9F88B4 /* Updater.swift */,
@@ -839,8 +851,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				81E62E50DC924777F9567782 /* AIChat.swift in Sources */,
+				00E907A0A56851E63F3A51CF /* AppPaths.swift in Sources */,
 				D3F4E955006792483AA853EE /* Art.swift in Sources */,
 				950096F40F22C978CCF1114C /* BulkSellMenu.swift in Sources */,
+				2051FED4A72B660812E18013 /* ChatView.swift in Sources */,
 				9FEE77C4A7AB883B36155B00 /* Collection.swift in Sources */,
 				AD40B10110EC22FA97680017 /* CollectionViews.swift in Sources */,
 				4195B1539F33245D1743AA9D /* Components.swift in Sources */,
@@ -855,6 +870,7 @@
 				960D507B0897ADB2CF197A25 /* MCPHandler.swift in Sources */,
 				4D45D693E9D7414EA54C2EF8 /* MCPServer.swift in Sources */,
 				9BCEE6E9E9E776AEAB91056B /* MenuView.swift in Sources */,
+				A913A8693B93B762946F9CA0 /* Migration.swift in Sources */,
 				AF471B1DE9170AE8F77A16EE /* Models.swift in Sources */,
 				B7D64A3B3E790A33815C335E /* Offscreen.swift in Sources */,
 				B9F267844F260566ADE02BCB /* OnboardingView.swift in Sources */,
@@ -948,7 +964,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -967,7 +983,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.2.15;
+				MARKETING_VERSION = 0.2.16;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1038,7 +1054,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -1051,7 +1067,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.2.15;
+				MARKETING_VERSION = 0.2.16;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

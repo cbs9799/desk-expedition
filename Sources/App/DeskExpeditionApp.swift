@@ -5,6 +5,7 @@ import SwiftUI
 @main
 enum Entry {
     static func main() {
+        SandboxMigration.run()
         if CommandLine.arguments.contains("--mcp") { MCPBridge.run() }
         DeskExpeditionApp.main()
     }
@@ -36,6 +37,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let args = ProcessInfo.processInfo.arguments
         if let i = args.firstIndex(of: "--snapshot"), args.indices.contains(i + 1) {
             Snapshot.render(to: URL(fileURLWithPath: args[i + 1]))
+            NSApp.terminate(nil)
+            return
+        }
+        if let i = args.firstIndex(of: "--chat-test"), args.indices.contains(i + 2) {
+            Snapshot.chatTest(provider: args[i + 1], prompts: Array(args[(i + 2)...]).filter { !$0.hasPrefix("-") })
             NSApp.terminate(nil)
             return
         }

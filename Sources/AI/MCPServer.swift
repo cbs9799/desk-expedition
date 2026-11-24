@@ -7,10 +7,7 @@ enum MCPConfig {
     static let defaultPort: UInt16 = 47213
 
     static var dir: URL {
-        let d = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("DeskExpedition", isDirectory: true)
-        try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
-        return d
+        AppPaths.support
     }
     static var tokenURL: URL { dir.appendingPathComponent("mcp-token") }
     static var portURL: URL { dir.appendingPathComponent("mcp-port") }

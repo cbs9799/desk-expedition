@@ -118,7 +118,8 @@ final class HQWindowController {
             w.titlebarAppearsTransparent = true
             w.appearance = NSAppearance(named: .darkAqua)   // the HQ is a dark UI: keep title & controls light-on-dark
             w.isReleasedWhenClosed = false
-            let host = NSHostingView(rootView: HQView().environment(store))
+            let debugTab = ProcessInfo.processInfo.environment["DE_HQTAB"].flatMap(Int.init)   // snapshot tooling only
+            let host = NSHostingView(rootView: HQView(initialTab: debugTab).environment(store))
             host.sizingOptions = [.minSize]          // let the window grow beyond the view's ideal size
             w.contentView = host
             w.contentMinSize = HQLayout.min
