@@ -325,6 +325,34 @@ final class StripScene: SKScene {
         lastMonsterCount = b.monsters.count
     }
 
+    /// The dropped item's pixel icon hops out of the last kill and flies into the bag (HUD).
+    private func lootPop(_ item: Item) {
+        let (key, frame) = item.iconRef
+        guard let sheet = SpriteSheet.named(key), sheet.frames.indices.contains(frame) else { return }
+        let n = SKSpriteNode(texture: sheet.frames[frame])
+        n.setScale(PixelArt.scale)
+        let start = CGPoint(x: lastKillPoint.x, y: lastKillPoint.y + 6)
+        n.position = start
+        n.zPosition = 5
+        let rarity = NSColor(hex: item.rarity.colorHex)
+        let glow = FX.glow(rarity, size: 26, alpha: item.rarity >= .rare ? 0.9 : 0.5)
+        glow.zPosition = -1
+        glow.setScale(1 / PixelArt.scale)
+        n.addChild(glow)
+        overlayFX.addChild(n)
+        let up = SKAction.moveBy(x: 6, y: 26, duration: 0.25); up.timingMode = .easeOut
+        let path = CGMutablePath()
+        let hop = CGPoint(x: start.x + 6, y: start.y + 26)
+        path.move(to: hop)
+        path.addQuadCurve(to: CGPoint(x: StripLayout.battleWidth + 90, y: 34), control: CGPoint(x: (hop.x + 700) / 2, y: 96))
+        n.run(.sequence([.wait(forDuration: 0.2), up, .wait(forDuration: 0.35),
+                         .group([.follow(path, asOffset: false, orientToPath: false, duration: 0.55), .scale(to: 0.8, duration: 0.55)]),
+                         .fadeOut(withDuration: 0.1), .removeFromParent()]))
+        if item.rarity >= .rare {
+            FX.label(textLayer, item.name, at: CGPoint(x: start.x, y: min(88, start.y + 46)), color: rarity, size: 11, rise: 6, life: 1.2)
+        }
+    }
+
     /// Rare spawns get called out so a glance at the strip catches them.
     private func announce(_ actor: MonsterActor) {
         let text: String
@@ -347,6 +375,7 @@ final class StripScene: SKScene {
     private func killMonster(_ actor: MonsterActor) {
         let delay = 0.16   // let the killing blow land first
         let c = actor.centerPoint
+        lastKillPoint = c
         actor.root.run(.sequence([
             .wait(forDuration: delay),
             .run { [weak self] in
@@ -491,6 +520,8 @@ final class StripScene: SKScene {
 
     private var seenDex = -1
     private var seenAI = 0
+    private var seenDrops = 0
+    private var lastKillPoint = CGPoint(x: 320, y: 30)
     private var seenTheme = -1
 
     private func celebrations(_ store: GameStore) {
@@ -502,6 +533,10 @@ final class StripScene: SKScene {
             FX.burst(fxLayer, at: at, color: NSColor(hex: 0x9CF4FF), count: 16, speed: 60, life: 0.8, size: 0.1)
         }
         if store.progress.theme != seenTheme { applyTheme(store.progress.theme) }
+        if store.dropEvents != seenDrops {
+            seenDrops = store.dropEvents
+            if let item = store.lastDrop { lootPop(item) }
+        }
         if store.aiActions != seenAI {
             seenAI = store.aiActions
             let x = heroes.map(\.root.position.x).max() ?? 200

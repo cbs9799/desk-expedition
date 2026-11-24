@@ -33,9 +33,28 @@ final class StripWindowController {
         apply()
     }
 
+    /// With click-through on, only the HUD (right side) takes clicks — and only while the pointer is over it,
+    /// so the rest of the band never gets in the way of work.
+    private var hoverTimer: Timer?
+
+    private func updateMouseCapture() {
+        guard store.settings.clickThrough else { panel.ignoresMouseEvents = false; return }
+        let f = panel.frame
+        let hud = NSRect(x: f.minX + StripLayout.battleWidth, y: f.minY, width: f.width - StripLayout.battleWidth, height: f.height)
+        let over = hud.contains(NSEvent.mouseLocation)
+        if panel.ignoresMouseEvents == over { panel.ignoresMouseEvents = !over }
+    }
+
     func apply() {
         let s = store.settings
         panel.ignoresMouseEvents = s.clickThrough
+        if hoverTimer == nil {
+            let t = Timer(timeInterval: 0.12, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.updateMouseCapture() }
+            }
+            RunLoop.main.add(t, forMode: .common)
+            hoverTimer = t
+        }
         let screens = NSScreen.screens
         let screen = screens.indices.contains(s.screenIndex) ? screens[s.screenIndex] : (NSScreen.main ?? screens.first)
         if let screen {

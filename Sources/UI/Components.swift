@@ -95,6 +95,27 @@ struct Bar: View {
     }
 }
 
+/// Pixel-art icon for an item (generated sheets `items_base`, `items_unique_a/b`), SF Symbol fallback.
+struct ItemIcon: View {
+    let item: Item
+    var size: CGFloat = 36
+
+    var body: some View {
+        let (key, frame) = item.iconRef
+        if let sheet = SpriteSheet.named(key), let cg = sheet.cgImage(frame: frame) {
+            let s = size / CGFloat(max(sheet.meta.cellW, sheet.meta.cellH))
+            Image(decorative: cg, scale: 1)
+                .interpolation(.none)
+                .resizable()
+                .frame(width: CGFloat(sheet.meta.cellW) * s, height: CGFloat(sheet.meta.cellH) * s)
+        } else {
+            Image(systemName: item.slot == .weapon ? "bolt.fill" : "shield.lefthalf.filled")
+                .font(.system(size: size * 0.5, weight: .bold))
+                .foregroundStyle(Color(hex: item.rarity.colorHex))
+        }
+    }
+}
+
 struct ItemCell: View {
     let item: Item?
     var selected = false
@@ -108,9 +129,10 @@ struct ItemCell: View {
             if let item {
                 RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(Color(hex: item.rarity.colorHex), lineWidth: selected ? 3 : 1.5)
-                Image(systemName: item.slot == .weapon ? "bolt.fill" : "shield.lefthalf.filled")
-                    .font(.system(size: size * 0.38, weight: .bold))
-                    .foregroundStyle(Color(hex: item.rarity.colorHex))
+                // Rarity glow behind the pixel icon.
+                RadialGradient(colors: [Color(hex: item.rarity.colorHex, opacity: item.rarity >= .rare ? 0.45 : 0.18), .clear],
+                               center: .center, startRadius: 0, endRadius: size * 0.5)
+                ItemIcon(item: item, size: size * 0.78)
                 if upgrade {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 11, weight: .bold))

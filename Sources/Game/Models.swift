@@ -131,6 +131,15 @@ struct Item: Codable, Identifiable, Hashable {
 
     var statText: String { slot == .weapon ? "공격 +\(power)" : "체력 +\(power)" }
 
+    /// Which icon sheet/frame draws this item: named legendaries have their own art; otherwise the noun
+    /// at the end of the name picks one of 6 weapon / 6 armor icons (old item names fall back by slot).
+    var iconRef: (key: String, frame: Int) {
+        if let u = unique { return (u < 10 ? "items_unique_a" : "items_unique_b", u % 10) }
+        let nouns = slot == .weapon ? Engine.weaponNames : Engine.armorNames
+        let i = nouns.firstIndex { name.hasSuffix($0) } ?? (name.unicodeScalars.reduce(0) { $0 &+ Int($1.value) } % nouns.count)
+        return ("items_base", (slot == .weapon ? 0 : 6) + i)
+    }
+
     /// Rough "goodness" score used for comparisons and auto-equip.
     var score: Double { slot == .weapon ? Double(power) : Double(power) / 5 }
 

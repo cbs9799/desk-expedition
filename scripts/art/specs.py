@@ -206,3 +206,36 @@ def all_specs():
     for scene, what in LANDMARKS.items():
         specs[f"props2_{scene}"] = "Image: " + LANDMARK_PROMPT.format(what=what)
     return specs
+
+
+# --- v0.2.6: item icons ---------------------------------------------------------------------
+ICON_STYLE = (
+    "A 2D pixel-art inventory ICON sheet for a cute RPG, late-1990s 32-bit console style (crisp chunky pixels, "
+    "1px dark outline, 3-4 tone shading, saturated colors, NO anti-aliasing, NO blur). Solid flat pure magenta "
+    "(#FF00FF) background, icons evenly spaced in a grid, each icon centered in its cell, not touching, same visual size, "
+    "slight 3/4 view, no text, no frames, no shadows. Everything is made from tiny desk objects."
+)
+
+ITEM_SHEETS = {
+    "items_base": ("2 rows, 6 icons per row. Row 1 (weapons): a sewing-needle sword, a push-pin spear, a bow made of a bent "
+                   "paper clip, a crayon magic staff with glowing tip, a box-cutter dagger, a wooden ruler club. Row 2 (armor): "
+                   "a silver thimble helmet, a red bottle-cap round shield, a green sticky-note cloak, an eraser chest armor, "
+                   "a big coat-button shield, a robe woven from colorful thread."),
+    "items_unique_a": ("2 rows, 5 icons per row, all LEGENDARY with a subtle golden glow: grandma's golden sewing needle, "
+                       "a shiny first-day paper clip, a rainbow deadline crayon, a half-used eraser shield with stars, "
+                       "a highlighter lance, a first-edition sticky-note cape, a golden push pin, a birthday-card ribbon whip, "
+                       "a rubber-band slingshot, a rusty brass drawer key sword."),
+    "items_unique_b": ("2 rows, 5 icons per row, all LEGENDARY with a subtle golden glow: a coffee-stain treasure map, "
+                       "a thumbnail-shaped tiny shield, a bundle of mechanical-pencil leads as a bow, a magnet dagger, "
+                       "correction-tape armor, a rubber-stamp hammer, a bookmark sword, a thread-spool robe, "
+                       "a bottle-cap crown, a cape made of monitor dust."),
+}
+
+_v025_all_specs = all_specs
+
+
+def all_specs():
+    specs = _v025_all_specs()
+    for key, layout in ITEM_SHEETS.items():
+        specs[key] = f"Image: {ICON_STYLE}\n\nLayout: {layout}"
+    return specs

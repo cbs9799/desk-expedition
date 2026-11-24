@@ -24,6 +24,9 @@
 - **공증 배포**: 릴리스는 집서버(이 Mac Studio)에서 `scripts/release.sh`로 올림. 테스트 → Developer ID 서명(서명용 키체인 `signing.keychain-db`) → 앱·dmg 공증(`weekwrap-notary` 프로필) → 스테이플 → 태그·GitHub 릴리스 업로드 → 내려받아 Gatekeeper 검증. GitHub Actions는 이제 테스트만(CI).
 - **AI 원정대장 (0.2.5, `docs/AI.md`)**: 앱에 MCP 서버 내장(127.0.0.1, 토큰, 브라우저 Origin 거절). 실행 파일을 `--mcp`로 부르면 stdio 브리지가 되어 Claude Desktop·Claude Code·Codex·Cursor에 그대로 붙음(앱이 꺼져 있으면 켬). 도구 14개(get_status, level_up, auto_equip, sell_all, select_region, move_desk 등)와 play 프롬프트. AI 행동과 이유가 띠에 🤖로, 메뉴 "AI 원정대장"에 기록됨. 메뉴에서 연결 설정 복사, `ai-autoplay.sh`로 N분마다 자동 플레이(launchd). Claude Code·Codex로 실제 플레이 확인.
 - **띠 모양 (0.2.4)**: 배경 그림 없이 얇은 지면 줄 위에 오브젝트만, 그 위는 바탕화면(레몬데스크식). 먼 랜드마크 0.35 / 중간 0.55 / 가까운 소품 1.0 패럴랙스. HUD는 패널 없이 요소마다 떠 있음.
+- **띠에서 바로 조작 (0.2.6)**: 본부를 열지 않아도 띠 오른쪽 HUD에서 지역 선택(이름 ▾ 메뉴), 웨이브 보석 눌러 이동(깬 지역은 1~10 전부, 진행 중 지역은 도달한 웨이브까지), 영웅별 레벨업 칩. 클릭 통과를 켜 둬도 마우스가 HUD 위에 있을 때만 클릭을 받음.
+- **장비 아이콘 (0.2.6)**: 무기 6·방어구 6·이름 있는 전설 20종 픽셀 아이콘 생성(items_*), 가방·장착 칸에 등급 빛과 함께 표시, 전리품이 나오면 몬스터 자리에서 아이콘이 튀어 올라 가방으로 날아감.
+- **개발 빌드 분리**: Debug 빌드는 번들 ID `club.lemongrove.deskexpedition.debug`(샌드박스 컨테이너 분리)라 서명된 릴리스 앱과 충돌하지 않음.
 - **테스트** 13개(기존 6개 + 도감·변종, 희귀 손님 스폰, 심층 층 기록, 이사, 예전 세이브 호환)(전투 진행, 보스 처치·지역 해금, 오프라인 상한·속도, 가방 가득 참, 등급 스케일, 장착·일괄 판매): 모두 통과.
 - **docs/screenshot.png**: 앱의 `--snapshot` 모드로 실제 SwiftUI 화면(띠·메뉴·본부)을 정해진 게임 상태로 렌더링한 합성 이미지.
 

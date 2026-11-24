@@ -76,8 +76,11 @@ enum MCPBridge {
         let bundle = Bundle.main.bundleURL
         let config = NSWorkspace.OpenConfiguration()
         config.activates = false
-        let sem = DispatchSemaphore(value: 0)
-        NSWorkspace.shared.openApplication(at: bundle, configuration: config) { _, _ in sem.signal() }
-        _ = sem.wait(timeout: .now() + 5)
+        // The completion handler is delivered on the main queue, so spin the run loop instead of
+        // blocking it (a semaphore here deadlocks).
+        var done = false
+        NSWorkspace.shared.openApplication(at: bundle, configuration: config) { _, _ in done = true }
+        let deadline = Date().addingTimeInterval(8)
+        while !done && Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.05)) }
     }
 }

@@ -37,6 +37,9 @@ final class GameStore {
     @ObservationIgnored private(set) var legendaryDrops = 0
     @ObservationIgnored private(set) var levelUps = [0, 0, 0]
     @ObservationIgnored private(set) var dexDiscoveries = 0
+    /// Loot dropped this session, for the strip's "item pops out" effect.
+    @ObservationIgnored private(set) var dropEvents = 0
+    @ObservationIgnored private(set) var lastDrop: Item?
     @ObservationIgnored private(set) var lastDexName = ""
     @ObservationIgnored private(set) var movesSeen = 0
 
@@ -138,6 +141,7 @@ final class GameStore {
     }
 
     private func handle(_ report: TickReport) {
+        if let d = report.drops.max(by: { $0.rarity < $1.rarity }) { lastDrop = d; dropEvents += 1 }
         for b in report.bossesDefeated { logEvent("보스 처치: \(b)") }
         if let r = report.regionUnlocked { logEvent("새 지역 해금: \(Region.all[r].name)") }
         for d in report.drops where d.rarity >= .rare { logEvent("\(d.rarity.name) 전리품: \(d.name)") }
@@ -285,6 +289,20 @@ final class GameStore {
 
     func isUpgrade(_ item: Item) -> Bool {
         progress.heroes.contains { ($0.item(in: item.slot)?.score ?? 0) < item.score }
+    }
+
+    /// Waves the player may jump to in the current region: every wave in a cleared region,
+    /// otherwise up to the wave reached now. Not offered in 서랍 심층.
+    var selectableWaves: ClosedRange<Int>? {
+        let p = progress
+        if p.isEndless { return nil }
+        return 1...(p.regionIndex < p.unlockedRegion ? Region.wavesPerRegion : max(1, p.wave))
+    }
+
+    func selectWave(_ wave: Int) {
+        guard let range = selectableWaves, range.contains(wave), wave != progress.wave else { return }
+        progress.wave = wave
+        battle = Engine.newBattle(for: progress)
     }
 
     func selectRegion(_ index: Int) {
