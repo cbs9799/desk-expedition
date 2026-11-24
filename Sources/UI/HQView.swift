@@ -24,20 +24,25 @@ struct HQView: View {
             switch initialTab ?? tab {
             case 1: DexView()
             case 2: JournalView()
-            case 3: RecordsView()
+            case 3: MaybeScroll { RecordsView() }
             default:
-                HStack(alignment: .top, spacing: 12) {
-                    ForEach(Array(p.heroes.enumerated()), id: \.offset) { i, hero in
-                        HeroCard(index: i, hero: hero, hp: store.battle.heroes[safe: i]?.hp ?? hero.maxHP)
+                MaybeScroll {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(alignment: .top, spacing: 12) {
+                            ForEach(Array(p.heroes.enumerated()), id: \.offset) { i, hero in
+                                HeroCard(index: i, hero: hero, hp: store.battle.heroes[safe: i]?.hp ?? hero.maxHP)
+                            }
+                        }
+                        bag(p)
                     }
                 }
-                bag(p)
             }
         }
         .padding(.horizontal, 20)
         .padding(.top, 34)
         .padding(.bottom, 18)
-        .frame(width: 920, height: 660, alignment: .top)
+        .frame(minWidth: HQLayout.min.width, idealWidth: HQLayout.ideal.width, maxWidth: .infinity,
+               minHeight: HQLayout.min.height, idealHeight: HQLayout.ideal.height, maxHeight: .infinity, alignment: .top)
         .background(Theme.bg)
         .foregroundStyle(Theme.text)
         .overlay {
@@ -317,5 +322,21 @@ private struct TraitRow: View {
                     .font(.system(size: 10, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim).lineLimit(1)
             }
         }
+    }
+}
+
+/// HQ window sizes: resizable down to `min`, opens at `ideal` the first time.
+enum HQLayout {
+    static let min = CGSize(width: 860, height: 520)
+    static let ideal = CGSize(width: 960, height: 680)
+}
+
+/// Scrolls in the live window; renders flat for ImageRenderer snapshots (which can't draw ScrollView content).
+struct MaybeScroll<Content: View>: View {
+    @Environment(\.staticRendering) private var staticRendering
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        if staticRendering { content() } else { ScrollView { content() }.scrollIndicators(.automatic) }
     }
 }

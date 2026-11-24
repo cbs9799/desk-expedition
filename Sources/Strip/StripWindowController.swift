@@ -101,16 +101,24 @@ final class HQWindowController {
 
     init(store: GameStore) { self.store = store }
 
+    var hqWindow: NSWindow? { window }
+
     func show() {
         if window == nil {
-            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 920, height: 660),
-                             styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: HQLayout.ideal.width, height: HQLayout.ideal.height),
+                             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                              backing: .buffered, defer: false)
-            w.title = "원정 본부"
+            w.title = L10n.t("원정 본부")
             w.titlebarAppearsTransparent = true
             w.isReleasedWhenClosed = false
-            w.contentView = NSHostingView(rootView: HQView().environment(store))
-            w.center()
+            let host = NSHostingView(rootView: HQView().environment(store))
+            host.sizingOptions = [.minSize]          // let the window grow beyond the view's ideal size
+            w.contentView = host
+            w.contentMinSize = HQLayout.min
+            w.collectionBehavior.insert(.fullScreenPrimary)
+            // Remember the size and position the player chose.
+            if !w.setFrameUsingName("HQWindow") { w.center() }
+            w.setFrameAutosaveName("HQWindow")
             window = w
         }
         NSApp.activate(ignoringOtherApps: true)

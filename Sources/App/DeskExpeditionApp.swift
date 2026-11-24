@@ -38,6 +38,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        if let i = args.firstIndex(of: "--hq"), args.indices.contains(i + 3),
+           let w = Double(args[i + 1]), let h = Double(args[i + 2]) {
+            Snapshot.renderHQ(width: w, height: h, to: URL(fileURLWithPath: args[i + 3]))
+            NSApp.terminate(nil)
+            return
+        }
         if let i = args.firstIndex(of: "--bench"), args.indices.contains(i + 1) {
             Snapshot.bench(seconds: Double(args[i + 1]) ?? 60, fps: args.contains("--fps30") ? 30 : 60)
             NSApp.terminate(nil)

@@ -71,6 +71,7 @@
 		59A7F1BA2A2D5DD08727E8E9 /* HQView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F1715D69894E010F34993E4 /* HQView.swift */; };
 		5B44A2D848B5B6B13F90431D /* mon_guest_pixel_cat.json in Resources */ = {isa = PBXBuildFile; fileRef = 96EF428B374A510C50DD8E77 /* mon_guest_pixel_cat.json */; };
 		64D9FDD9666503A02ECE9FCC /* strip_drawer.png in Resources */ = {isa = PBXBuildFile; fileRef = B0C9B3B480E6704754A60D4D /* strip_drawer.png */; };
+		668A9CE31F97102AF2A5A3C5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C88855DBDD9F9C48D6580B23 /* Assets.xcassets */; };
 		693FE469BFA6A8F8FA3FFEDB /* props_planter.png in Resources */ = {isa = PBXBuildFile; fileRef = AB3B902B78303D233D056F58 /* props_planter.png */; };
 		6A94CC7F0CB29C186C24770A /* Products.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 38770552AB0BCF7BAE70854F /* Products.storekit */; };
 		6DB13C6E2E5E6BC50B62D759 /* mon_paper_crane.json in Resources */ = {isa = PBXBuildFile; fileRef = 33BE09CE7D0A01C3A020E3F1 /* mon_paper_crane.json */; };
@@ -271,6 +272,7 @@
 		C0D9FAC5C46123BF619A4C1F /* MCPHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPHandler.swift; sourceTree = "<group>"; };
 		C14E8594334DC8865C643CC1 /* Offscreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Offscreen.swift; sourceTree = "<group>"; };
 		C53D2F3305D98B8DFB672074 /* ai-autoplay.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "ai-autoplay.sh"; sourceTree = "<group>"; };
+		C88855DBDD9F9C48D6580B23 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C99A6E12253DC614BC3400F3 /* mon_stapler_king.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mon_stapler_king.png; sourceTree = "<group>"; };
 		CA9AA669B71966FDE21382EF /* mon_guest_usb_fairy.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mon_guest_usb_fairy.json; sourceTree = "<group>"; };
 		CB062FBEA45BAA1248C4FD81 /* mon_dandelion_sprite.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = mon_dandelion_sprite.json; sourceTree = "<group>"; };
@@ -527,6 +529,7 @@
 		C610F19C6730A46856EBFAC7 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				C88855DBDD9F9C48D6580B23 /* Assets.xcassets */,
 				E65B6DB694466D3E142C8DC4 /* AI */,
 				BB70B616A5737F418AF7A9DC /* Art */,
 				640F292CC626E40776EEFFD6 /* Loc */,
@@ -647,6 +650,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				668A9CE31F97102AF2A5A3C5 /* Assets.xcassets in Resources */,
 				00435DBE9F790FE290797661 /* Localizable.xcstrings in Resources */,
 				00B9F088543E985879B7A147 /* accessories.json in Resources */,
 				1C5F354D44001A92D58332BB /* accessories.png in Resources */,
@@ -881,7 +885,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -900,7 +904,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.2.8;
+				MARKETING_VERSION = 0.2.9;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -967,7 +971,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -980,7 +984,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.2.8;
+				MARKETING_VERSION = 0.2.9;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

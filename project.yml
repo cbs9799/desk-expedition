@@ -8,8 +8,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.2.8"
-    CURRENT_PROJECT_VERSION: "10"
+    MARKETING_VERSION: "0.2.9"
+    CURRENT_PROJECT_VERSION: "11"
 targets:
   DeskExpedition:
     type: application
@@ -22,6 +22,7 @@ targets:
         buildPhase: resources
       - path: Resources/Loc
         buildPhase: resources
+      - path: Resources/Assets.xcassets
     info:
       path: Sources/Info.plist
       properties:
@@ -43,6 +44,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: club.lemongrove.deskexpedition
         PRODUCT_NAME: DeskExpedition
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_IDENTITY: "-"
         CODE_SIGN_STYLE: Manual
         ENABLE_HARDENED_RUNTIME: YES

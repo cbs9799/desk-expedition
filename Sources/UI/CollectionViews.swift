@@ -40,7 +40,7 @@ struct DexView: View {
                     .font(.system(size: 10, design: .rounded)).foregroundStyle(Theme.dim)
             }
             ScrollView {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5), spacing: 8) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 8)], spacing: 8) {
                     ForEach(Species.all) { sp in
                         DexCard(species: sp, dex: p.dex)
                     }

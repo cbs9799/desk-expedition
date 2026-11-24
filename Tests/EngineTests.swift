@@ -313,4 +313,21 @@ final class EngineTests: XCTestCase {
         let back = try JSONDecoder().decode(Progress.self, from: data)
         XCTAssertEqual(back.aiDiary.first?.text, "단추 Lv.2 — 전사가 약해서")
     }
+
+    @MainActor
+    func testHQWindowIsResizableWithMinimumSize() {
+        let hq = HQWindowController(store: GameStore(progress: Progress(), persist: false))
+        hq.show()
+        let w = hq.hqWindow
+        XCTAssertTrue(w?.styleMask.contains(.resizable) ?? false)
+        XCTAssertEqual(w?.contentMinSize, HQLayout.min)
+        w?.setContentSize(NSSize(width: 1300, height: 900))
+        XCTAssertEqual(w?.contentLayoutRect.width ?? 0, 1300, accuracy: 1, "window grows past the view's ideal size")
+        w?.close()
+    }
+
+    func testAppIconIsBundled() {
+        XCTAssertEqual(Bundle.main.infoDictionary?["CFBundleIconName"] as? String, "AppIcon")
+        XCTAssertNotNil(Bundle.main.url(forResource: "AppIcon", withExtension: "icns"))
+    }
 }

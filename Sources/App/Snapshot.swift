@@ -127,6 +127,20 @@ enum Snapshot {
                      fps, wall, frame, Double(frame) / wall, used, used / wall * 100, m0, footprintMB(), max(peak, footprintMB())))
     }
 
+    /// `--hq W H <out.png>`: renders only the HQ window content at a given size (resizing check).
+    static func renderHQ(width: CGFloat, height: CGFloat, to url: URL) {
+        let store = demoStore()
+        let view = HQView().environment(store).environment(\.staticRendering, true).frame(width: width, height: height)
+        let r = ImageRenderer(content: view)
+        r.scale = 1
+        guard let img = r.cgImage else { return }
+        let rep = NSBitmapImageRep(cgImage: img)
+        let target = (try? rep.representation(using: .png, properties: [:])?.write(to: url)) != nil ? url
+            : FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
+        try? rep.representation(using: .png, properties: [:])?.write(to: target)
+        print("hq written: \(target.path)")
+    }
+
     /// `--frames <dir>`: dumps 0.1 s strip frames for eyeballing animation.
     static func dumpFrames(to dir: URL, seconds: Double = 12, showcase: Bool = false) {
         let store = demoStore()
@@ -215,6 +229,7 @@ enum Snapshot {
 
                 // HQ window.
                 HQView()
+                    .frame(width: 920, height: 660)
                     .overlay(alignment: .topLeading) {
                         HStack(spacing: 8) {
                             Circle().fill(Color(hex: 0xFF5F57)).frame(width: 12, height: 12)
