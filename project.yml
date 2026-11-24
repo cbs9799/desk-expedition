@@ -23,6 +23,8 @@ targets:
         CFBundleDisplayName: 책상 원정대
         CFBundleName: 책상 원정대
         LSUIElement: true
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSApplicationCategoryType: public.app-category.role-playing-games
         NSHumanReadableCopyright: "© 2026 Lemongrove"
     entitlements:
