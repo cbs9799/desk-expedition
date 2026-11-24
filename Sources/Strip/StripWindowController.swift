@@ -53,7 +53,8 @@ final class StripWindowController {
     private func updateMouseCapture() {
         guard store.settings.clickThrough else { panel.ignoresMouseEvents = false; return }
         let f = panel.frame
-        let hud = NSRect(x: f.minX + StripLayout.battleWidth, y: f.minY, width: f.width - StripLayout.battleWidth, height: f.height)
+        let s = CGFloat(store.settings.stripScale)
+        let hud = NSRect(x: f.minX + StripLayout.battleWidth * s, y: f.minY, width: f.width - StripLayout.battleWidth * s, height: f.height)
         let over = hud.contains(NSEvent.mouseLocation)
         if panel.ignoresMouseEvents == over { panel.ignoresMouseEvents = !over }
     }
@@ -75,14 +76,15 @@ final class StripWindowController {
         let screen = byID ?? (screens.indices.contains(s.screenIndex) ? screens[s.screenIndex] : (NSScreen.main ?? screens.first))
         if let screen {
             let vf = screen.visibleFrame
-            let w = min(StripLayout.width, vf.width - 16)
+            let scale = CGFloat(s.stripScale)
+            let w = min(StripLayout.width * scale, vf.width - 16)
             let x: CGFloat
             switch s.alignment {
             case .left: x = vf.minX + 8
             case .center: x = vf.midX - w / 2
             case .right: x = vf.maxX - w - 8
             }
-            panel.setFrame(NSRect(x: x, y: vf.minY + 2, width: w, height: StripLayout.height), display: true)
+            panel.setFrame(NSRect(x: x, y: vf.minY + 2, width: w, height: StripLayout.height * scale), display: true)
         }
         if s.visible { panel.orderFrontRegardless() } else { panel.orderOut(nil) }
         updatePowerMode()

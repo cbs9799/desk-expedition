@@ -57,7 +57,7 @@ final class StripScene: SKScene {
 
     override init(size: CGSize) {
         super.init(size: size)
-        scaleMode = .resizeFill
+        scaleMode = .fill   // fixed 920×100 scene, scaled to whatever size the band is
         backgroundColor = .clear
         anchorPoint = .zero
 

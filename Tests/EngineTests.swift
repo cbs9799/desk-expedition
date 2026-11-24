@@ -330,4 +330,18 @@ final class EngineTests: XCTestCase {
         XCTAssertEqual(Bundle.main.infoDictionary?["CFBundleIconName"] as? String, "AppIcon")
         XCTAssertNotNil(Bundle.main.url(forResource: "AppIcon", withExtension: "icns"))
     }
+
+    @MainActor
+    func testStripScalesWindowAndKeepsHUDClickable() {
+        let store = GameStore(progress: Progress(), persist: false)
+        store.settings.stripScale = 0.5
+        let strip = StripWindowController(store: store, onOpenHQ: {})
+        strip.apply()
+        XCTAssertEqual(strip.panel.frame.height, StripLayout.height * 0.5, accuracy: 0.5)
+        XCTAssertEqual(strip.panel.frame.width, min(StripLayout.width * 0.5, (NSScreen.main?.visibleFrame.width ?? 2000) - 16), accuracy: 0.5)
+        store.settings.stripScale = 1.25
+        strip.apply()
+        XCTAssertEqual(strip.panel.frame.height, StripLayout.height * 1.25, accuracy: 0.5)
+        strip.panel.orderOut(nil)
+    }
 }

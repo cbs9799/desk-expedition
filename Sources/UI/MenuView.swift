@@ -59,6 +59,18 @@ struct MenuView: View {
                     store.settings.autoSell = on
                 }
                 ToggleRow(title: "효과음", isOn: store.settings.sound) { store.settings.sound.toggle() }
+                HStack {
+                    Text("띠 크기").font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
+                    Spacer()
+                    Text("\(Int((store.settings.stripScale * 100).rounded()))%")
+                        .font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(Theme.gold)
+                }
+                SegmentRow(options: [50, 67, 75, 100, 125], selected: Int((store.settings.stripScale * 100).rounded()),
+                           label: { "\($0)%" }, onSelect: { store.settings.stripScale = Double($0) / 100 })
+                Slider(value: Binding(get: { store.settings.stripScale },
+                                      set: { store.settings.stripScale = ($0 * 100).rounded() / 100 }),
+                       in: StripSettings.scaleRange)
+                    .controlSize(.small)
                 Text("위치").font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
                 SegmentRow(options: StripSettings.Alignment.allCases, selected: store.settings.alignment,
                            label: { $0.name }, onSelect: { store.settings.alignment = $0 })

@@ -13,14 +13,19 @@ struct StripView: View {
     var onOpenHQ: () -> Void = {}
 
     var body: some View {
+        let s = CGFloat(store.settings.stripScale)
+        let hudW = StripLayout.width - StripLayout.battleWidth - 6
         ZStack(alignment: .topLeading) {
+            // SpriteKit scales its fixed 920×100 scene to the view (scaleMode .fill).
             StripSpriteView(store: store, onOpenHQ: onOpenHQ)
-                .frame(width: StripLayout.width, height: StripLayout.height)
+                .frame(width: StripLayout.width * s, height: StripLayout.height * s)
             StripHUD(progress: store.progress, banner: store.banner)
-                .frame(width: StripLayout.width - StripLayout.battleWidth - 6, height: StripLayout.height)
-                .offset(x: StripLayout.battleWidth + 6)
+                .frame(width: hudW, height: StripLayout.height)
+                .scaleEffect(s, anchor: .topLeading)
+                .frame(width: hudW * s, height: StripLayout.height * s, alignment: .topLeading)
+                .offset(x: (StripLayout.battleWidth + 6) * s)
         }
-        .frame(width: StripLayout.width, height: StripLayout.height)
+        .frame(width: StripLayout.width * s, height: StripLayout.height * s, alignment: .topLeading)
     }
 }
 

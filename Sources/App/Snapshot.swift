@@ -159,7 +159,8 @@ enum Snapshot {
             }
             store.battle = b
         }
-        guard let off = StripOffscreen(store: store) else { return }
+        let scale = ProcessInfo.processInfo.environment["DE_SCALE"].flatMap(Double.init) ?? 1
+        guard let off = StripOffscreen(store: store, scale: 2 * scale) else { return }
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         var out = dir
         for i in 0..<Int(seconds * 10) {
