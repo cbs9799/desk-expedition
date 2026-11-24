@@ -1,0 +1,24 @@
+# 책상 원정대 (가칭, 맥 화면 아래 띠에서 영웅 셋이 알아서 싸우고 전리품을 모으는 방치형 RPG)
+
+- **ID**: 20261124-2
+- **날짜**: 2026-11-24
+- **슬롯**: 데스크톱·게임
+- **플랫폼**: macOS (Mac App Store, Steam Mac 동시 판매 가능)
+- **아이디어 이름**: 책상 원정대 (가칭, 맥 화면 아래 띠에서 영웅 셋이 알아서 싸우고 전리품을 모으는 방치형 RPG)
+- **한 줄 요약**: 맥 화면 맨 아래 얇은 띠에서 픽셀 영웅 3명이 내가 일하는 동안 알아서 사냥하고 전리품을 모으고, 쉬는 시간에 장비·스킬을 고르는 1회 구매 방치형 RPG (Windows 히트작 TBH: Task Bar Hero가 맥에는 없는 빈자리를 노림)
+- **타깃 / 문제**: 맥으로 일·공부하는 20~40대 방치형 게이머 / Windows에서는 작업표시줄 RPG(TBH·Desktop Raid·Lootborne)를 켜 두고 일하지만 맥에는 같은 장르가 거의 없음 / CrossOver로 TBH를 돌리다 업데이트 뒤 마우스 입력이 안 먹는 문제를 겪음 / 맥 방치형 추천 글에는 농장·꾸미기류(Rusty's Retirement 등)만 나옴
+- **카테고리**: 게임 / 데스크톱 방치형 RPG (자동 전투·파밍) / 갈래: 방치형·코지 게임
+- **시장**: 글로벌 + 한국 (TBH 한국어 지원)
+- **수요근거(1-5)**: 4
+- **경쟁(1-5)**: 2
+- **MVP 난이도(1-5)**: 3
+- **수익화(1-5)**: 4
+- **적합도(1-5)**: 4
+- **총점(/25)**: 17
+- **근거 링크**: https://store.steampowered.com/app/3678970/ | https://www.reddit.com/r/gamerecommendations/comments/1uimgg3/looking_for_desktop_idletaskbar_games_with/ | https://www.reddit.com/r/TBHTaskBarHero/comments/1u8ns3l/help_tbh_task_bar_hero_mouse_input_issues_on/ | https://www.reddit.com/r/cozygames/comments/1wk64yl/looking_for_idle_desktop_game_for_mac/ | https://www.reddit.com/r/macgaming/comments/1xqvjv0/idle_game_with_a_real_world_and_real_fights_on/ | https://store.steampowered.com/app/3122460/ | https://store.steampowered.com/app/3477820/ | https://store.steampowered.com/app/5045040/
+- **경쟁 앱과 빈틈**: [경쟁 있음] 차별점: (e) Mac App Store에는 화면 가장자리 자동 전투 RPG가 없고 TBH·Desktop Raid는 Windows 전용, (d) Mac을 지원하는 작업표시줄 RPG는 Taskbar Titans(리뷰 14개)와 11/26 출시 예정인 Traymon World뿐 / TBH: Task Bar Hero(무료, 2026-05 출시, Steam 영어 리뷰 9,097개 Mixed·최근 2,179개 Mostly Positive, 한국어, Mac 없음) / Desktop Raid(₩9,000·$8.99, 리뷰 709개 Mostly Positive, 한국어, Mac 없음) / Taskbar Titans(Steam ₩5,600·$4.99, 리뷰 14개, Mac 지원, 한국어 없음) / Traymon World: Taskbar Monster RPG(무료, 11/26 출시 예정, Mac·한국어 지원, 몬스터 수집과 플레이어 간 거래 중심) / Rusty's Retirement($4.19, 13,995)·Tiny Pasture($5.99, 7,161)는 농장·꾸미기류로 전투·파밍 없음 / 구글 자동완성 task bar hero mac·macos·macbook / 빈틈: 맥 네이티브(메뉴바, 전체화면·화면 공유 때 자동 숨김, 저전력), 한국어, 1회 구매, 거래·과금 없는 오프라인
+- **MVP 범위**: 3~4주 / 1) 화면 아래 높이 60~80px 투명 띠 창(클릭 통과 토글, 전체화면·화면 공유 때 자동 숨김, 모니터 선택)에서 영웅 3명 자동 전투 / 2) 직업 3개·스킬 트리·장비 4등급 드롭과 장착, 지역 5곳과 보스, 오프라인 진행 정산 / 3) 메뉴바 아이콘(진행 상황·전리품), 점심·퇴근 전 가방 가득 참 알림, 매일 바뀌는 오늘의 던전과 주간 보스 / 상업 라이선스 픽셀 에셋 활용
+- **수익 모델**: 1회 구매 $4.99 / ₩6,600 (Steam Mac 동시 판매 가능), 이후 지역·직업 확장팩 유료 DLC (무작위 상품·가챠 없음)
+- **리스크**: Steam 작업표시줄 게임이 2026년 하반기에 20개 넘게 쏟아지는 중이고 Mac 지원도 늘기 시작(Traymon World 11/26, PC FISH) / TBH 개발사의 Mac 포팅 가능성 / 레몬 데스크와 같은 맥 화면 아래 방치형 갈래라 한 시리즈로 묶을지 정리 필요 / 아트·밸런싱 완성도가 관건 / 전리품 무작위 등급은 유료 결제와 완전히 분리해 확률형 아이템 규정 회피 / 업무 중 켜 두는 게임이라 소리 기본 끔·저자극·저전력 연출 / 판타지 전투라 12+, Kids 카테고리 아님 / 서버 없음
+- **상태**: 신규
+- **사용 빈도 / 계기**: 매일 · 출근해 맥을 켜면 화면 아래에서 자동 전투 시작, 점심·퇴근 전 가방 가득 참 알림에 1~2분 장비 정리 / 매주 · 월요일 새 주간 보스
