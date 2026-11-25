@@ -27,7 +27,9 @@ struct HQView: View {
             case 1: DexView()
             case 2: JournalView()
             case 3: MaybeScroll { RecordsView() }
-            case 4: ChatView()
+            case 4:
+                CaptainPanel()
+                ChatView()
             default:
                 MaybeScroll {
                     VStack(alignment: .leading, spacing: 14) {

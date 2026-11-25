@@ -29,6 +29,9 @@ struct StripSettings: Equatable {
     var autoUpdate = true
     /// Auto-sell spares up to this rarity (0 common, 1 uncommon, 2 rare).
     var autoSellRarity = 1
+    /// 자동 원정대장 (rule-based auto play, no AI tokens).
+    var autoCaptain = false
+    var captain = AutoCaptain.Config()
     static let scaleRange = 0.5...1.5
 }
 
@@ -160,6 +163,7 @@ final class GameStore {
         if p != progress { progress = p }
         battle = b
         handle(report)
+        captainTick()
         if let _ = banner, Date() > bannerExpiry { banner = nil }
         if Date().timeIntervalSince(lastSave) > 30 { save() }
     }
@@ -171,6 +175,7 @@ final class GameStore {
         for d in report.drops where d.rarity >= .rare { logEvent("\(d.rarity.name) 전리품: \(d.name)") }
         for n in report.newDex { logEvent("도감 등록: \(n)") }
         if report.wipes > 0 { logEvent("전멸 → 3웨이브 후퇴 (\(progress.stageText))") }
+        if report.wipes > 0 { lastWipeAt = GameClock.now() }
         if let stage = report.wallHit {
             showBanner(L10n.t("벽이에요") + " (\(stage)): " + L10n.t("아래에서 파밍하며 골드를 모아요. 레벨업·전술·장비를 바꾸면 다시 도전해요"), seconds: 10)
             logEvent("벽: \(stage)에서 \(Wall.wipesToFarm)번 전멸 → 파밍 전환")
@@ -251,7 +256,8 @@ final class GameStore {
         let gain = Move.gain(progress) + goldBonus
         var p = progress
         p.memories += gain
-        p.farmCap = 0; p.wallWipes = 0; p.wallKey = -1
+        p.farmCap = 0; p.wallWipes = 0; p.wallKey = -1; p.wallTotalWipes = 0; p.wallSince = nil
+        p.runBestAt = nil
         p.moves += 1
         p.gold = 0
         p.bag = []
@@ -368,7 +374,7 @@ final class GameStore {
 
     /// #4: spend gold on whoever is lowest (ties: cheapest) until it runs out. Returns levels gained per hero.
     @discardableResult
-    func levelUpEvenly() -> [Int] {
+    func levelUpEvenly(quiet: Bool = false) -> [Int] {
         var gained = [0, 0, 0]
         for _ in 0..<5_000 {
             let order = progress.heroes.indices.sorted {
@@ -378,10 +384,78 @@ final class GameStore {
             levelUp(i)
             gained[i] += 1
         }
-        if gained.reduce(0, +) > 0 {
+        if gained.reduce(0, +) > 0 && !quiet {
             showBanner(L10n.t("고르게 레벨업") + ": " + progress.heroes.indices.map { "\(progress.heroes[$0].displayName) +\(gained[$0])" }.joined(separator: " · "), seconds: 5)
         }
         return gained
+    }
+
+    // MARK: Shared upgrade & auto captain
+
+    struct UpgradeResult { var equipChanges = 0; var sold = 0; var soldGold = 0; var traits: [String] = []; var levels = [0, 0, 0] }
+
+    /// Equip upgrades (class-aware) → sell spares → pick open traits by style → even level-up. Used by MCP and the captain.
+    @discardableResult
+    func upgradeAll(sellUpTo: Rarity? = nil, style: AIStyle? = nil, levelUp: Bool = true, chooseTraits: Bool = true) -> UpgradeResult {
+        var r = UpgradeResult()
+        let before = progress.heroes.map { [$0.weapon?.id, $0.armor?.id] }
+        autoEquip()
+        r.equipChanges = zip(before, progress.heroes.map { [$0.weapon?.id, $0.armor?.id] }).filter { $0 != $1 }.count
+        let s = sellAll(upTo: sellUpTo ?? Rarity(rawValue: settings.autoSellRarity) ?? .uncommon)
+        r.sold = s.count; r.soldGold = s.gold
+        if chooseTraits {
+            let st = style ?? AIStyle(rawValue: settings.aiStyle) ?? .steady
+            for h in 0..<3 {
+                while let tier = progress.heroes[h].pendingTraitTier {
+                    chooseTrait(h, tier: tier, option: TraitPick.choose(progress.heroes[h].heroClass, tier: tier, style: st))
+                    r.traits.append("\(progress.heroes[h].displayName): \(progress.heroes[h].chosenTraitNames.last ?? "")")
+                }
+            }
+        }
+        if levelUp { r.levels = levelUpEvenly(quiet: true) }
+        return r
+    }
+
+    @ObservationIgnored private var nextCaptainAt = Date.distantPast
+    @ObservationIgnored private(set) var lastWipeAt: Date?
+    private(set) var captainLog: [LogLine] = []
+
+    /// Runs the auto-captain rules when due (called from the game tick).
+    func captainTick(now: Date = GameClock.now()) {
+        guard settings.autoCaptain, now >= nextCaptainAt else { return }
+        nextCaptainAt = now.addingTimeInterval(settings.captain.interval)
+        runCaptain(now: now)
+    }
+
+    func runCaptain(now: Date = GameClock.now()) {
+        let actions = AutoCaptain.decide(.init(progress: progress, now: now, lastWipeAt: lastWipeAt), settings.captain)
+        for a in actions {
+            switch a {
+            case .tidy(let r):
+                autoEquip()
+                sellAll(upTo: r)
+            case .exchange(let slot):
+                if let it = exchangeShards(slot: slot) { captainSays("조각 교환 → \(it.name)", reason: "조각 \(Pity.legendaryPrice)개 · \(progress.runBestFloor)층 이상") }
+            case .move(let why):
+                let total = Move.gain(progress) + Move.goldMemories(progress.gold)
+                moveDesk()
+                captainSays("이사 · 추억 +\(total)", reason: why)
+            case .upgradeAll:
+                upgradeAll(sellUpTo: settings.captain.sellUpTo, style: .aggressive)
+            case .tactic(let t, let why):
+                if progress.tactic != t {
+                    setTactic(t)
+                    captainSays("전술 \(t.name)", reason: why)
+                }
+            }
+        }
+    }
+
+    private func captainSays(_ what: String, reason: String) {
+        captainLog.append(LogLine(date: Date(), text: "\(what) — \(reason)"))
+        if captainLog.count > 60 { captainLog.removeFirst(captainLog.count - 60) }
+        showBanner("🤖 \(what) — \(reason)", seconds: 6)
+        logEvent("자동 원정대장: \(what) — \(reason)")
     }
 
     /// #1: the party got stronger — go try the wall again.
@@ -434,7 +508,9 @@ final class GameStore {
     func exchangeShards(slot: GearSlot) -> Item? {
         guard progress.shards >= Pity.legendaryPrice, !progress.bagIsFull else { return nil }
         var rng = SystemRandomNumberGenerator()
-        let item = Engine.makeItem(region: progress.regionIndex, boss: true, floor: progress.isEndless ? progress.wave : 0,
+        // Power follows the deepest floor ever reached, not where the party stands right now (e.g. just after a move).
+        let floor = max(progress.bestFloor, progress.isEndless ? progress.wave : 0)
+        let item = Engine.makeItem(region: floor > 0 ? Region.endlessIndex : progress.regionIndex, boss: true, floor: floor,
                                    forceLegendary: true, slot: slot, rng: &rng)
         progress.shards -= Pity.legendaryPrice
         progress.bag.append(item)
@@ -548,6 +624,12 @@ final class GameStore {
         s.themeOverride = d.object(forKey: "shop.theme") == nil ? -1 : d.integer(forKey: "shop.theme")
         if d.object(forKey: "update.auto") != nil { s.autoUpdate = d.bool(forKey: "update.auto") }
         if d.object(forKey: "tidy.sellRarity") != nil { s.autoSellRarity = min(2, max(0, d.integer(forKey: "tidy.sellRarity"))) }
+        s.autoCaptain = d.bool(forKey: "captain.on")
+        if d.object(forKey: "captain.moveGain") != nil { s.captain.moveGain = d.integer(forKey: "captain.moveGain") }
+        if d.object(forKey: "captain.moveGainStalled") != nil { s.captain.moveGainStalled = d.integer(forKey: "captain.moveGainStalled") }
+        if d.object(forKey: "captain.stallMinutes") != nil { s.captain.stallMinutes = d.double(forKey: "captain.stallMinutes") }
+        if d.object(forKey: "captain.exchangeFloor") != nil { s.captain.exchangeFloor = d.integer(forKey: "captain.exchangeFloor") }
+        if d.object(forKey: "captain.sellUpTo") != nil { s.captain.sellUpTo = Rarity(rawValue: d.integer(forKey: "captain.sellUpTo")) ?? .rare }
         if d.object(forKey: "strip.scale") != nil {
             s.stripScale = min(StripSettings.scaleRange.upperBound, max(StripSettings.scaleRange.lowerBound, d.double(forKey: "strip.scale")))
         }
@@ -571,5 +653,11 @@ final class GameStore {
         d.set(settings.stripScale, forKey: "strip.scale")
         d.set(settings.autoUpdate, forKey: "update.auto")
         d.set(settings.autoSellRarity, forKey: "tidy.sellRarity")
+        d.set(settings.autoCaptain, forKey: "captain.on")
+        d.set(settings.captain.moveGain, forKey: "captain.moveGain")
+        d.set(settings.captain.moveGainStalled, forKey: "captain.moveGainStalled")
+        d.set(settings.captain.stallMinutes, forKey: "captain.stallMinutes")
+        d.set(settings.captain.exchangeFloor, forKey: "captain.exchangeFloor")
+        d.set(settings.captain.sellUpTo.rawValue, forKey: "captain.sellUpTo")
     }
 }

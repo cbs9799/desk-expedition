@@ -493,4 +493,100 @@ final class EngineTests: XCTestCase {
         XCTAssertNotNil(store.progress.heroes[1].trait(tier: 0), "pending trait chosen")
         XCTAssertGreaterThan(store.progress.heroes[0].level, 1)
     }
+
+    // MARK: 0.2.18 auto captain
+
+    private func deepRun(best: Int, levels: Int = 60) -> DeskExpedition.Progress {
+        var p = DeskExpedition.Progress()
+        p.unlockedRegion = Region.endlessIndex
+        p.regionIndex = Region.endlessIndex
+        p.wave = best
+        p.runBestFloor = best
+        p.bestFloor = best
+        for i in p.heroes.indices { p.heroes[i].level = levels }
+        return p
+    }
+
+    func testCaptainMovesOnBigGainOrWhenStalled() {
+        let c = AutoCaptain.Config()
+        let now = Date()
+        var p = deepRun(best: 300, levels: 200)                     // gain = 3 + 150 + 20 = 173 ≥ 150
+        XCTAssertTrue(AutoCaptain.decide(.init(progress: p, now: now, lastWipeAt: nil), c).contains { if case .move = $0 { return true }; return false })
+
+        p = deepRun(best: 190, levels: 60)                          // gain = 3 + 95 + 6 = 104: only when stalled
+        p.runBestAt = now.addingTimeInterval(-5 * 60)
+        XCTAssertFalse(AutoCaptain.decide(.init(progress: p, now: now, lastWipeAt: nil), c).contains { if case .move = $0 { return true }; return false })
+        p.runBestAt = now.addingTimeInterval(-11 * 60)
+        let acts = AutoCaptain.decide(.init(progress: p, now: now, lastWipeAt: nil), c)
+        guard case .move(let why)? = acts.first(where: { if case .move = $0 { return true }; return false }) else { return XCTFail("stalled run should move") }
+        XCTAssertTrue(why.contains("정체"))
+        XCTAssertTrue(acts.contains(.tactic(.charge, reason: "이사 직후 돌격")))
+    }
+
+    func testCaptainExchangesOnlyDeepAndPicksTacticFromWipes() {
+        let c = AutoCaptain.Config()
+        let now = Date()
+        var p = deepRun(best: 100)
+        p.shards = 40
+        XCTAssertFalse(AutoCaptain.decide(.init(progress: p, now: now, lastWipeAt: nil), c).contains(.exchange(.weapon)))
+        p.runBestFloor = 125
+        XCTAssertTrue(AutoCaptain.decide(.init(progress: p, now: now, lastWipeAt: nil), c).contains(.exchange(.weapon)))
+        p.tactic = .charge
+        let afterWipe = AutoCaptain.decide(.init(progress: p, now: now, lastWipeAt: now.addingTimeInterval(-30)), c)
+        XCTAssertTrue(afterWipe.contains { if case .tactic(.balanced, _) = $0 { return true }; return false })
+        let calm = AutoCaptain.decide(.init(progress: p, now: now, lastWipeAt: now.addingTimeInterval(-600)), c)
+        XCTAssertFalse(calm.contains { if case .tactic = $0 { return true }; return false }, "already on charge")
+        p.tactic = .balanced
+        let soon = AutoCaptain.decide(.init(progress: p, now: now, lastWipeAt: now.addingTimeInterval(-200)), c)
+        XCTAssertFalse(soon.contains { if case .tactic = $0 { return true }; return false }, "no flip-flop right after a wipe")
+        let later = AutoCaptain.decide(.init(progress: p, now: now, lastWipeAt: now.addingTimeInterval(-400)), c)
+        XCTAssertTrue(later.contains { if case .tactic(.charge, _) = $0 { return true }; return false })
+    }
+
+    @MainActor
+    func testExchangePowerFollowsBestFloorNotCurrentStage() {
+        var p = Progress()
+        p.bestFloor = 150
+        p.shards = Pity.legendaryPrice * 2
+        let store = GameStore(progress: p, persist: false)        // standing in region 0 right after a move
+        let it = store.exchangeShards(slot: .weapon)
+        let early = Engine.makeItem(region: 0, boss: true, forceLegendary: true, slot: .weapon, rng: &SplitMixHolder.rng)
+        XCTAssertGreaterThan(it?.power ?? 0, early.power * 10)
+    }
+
+    @MainActor
+    func testWallTotalsSurviveLevelUpsAndMoveReportsTotal() {
+        var p = deepRun(best: 150)
+        p.wallTotalWipes = 7; p.wallWipes = 3; p.farmCap = 147; p.gold = 2_000_000
+        let store = GameStore(progress: p, persist: false)
+        store.levelUp(0)
+        XCTAssertEqual(store.progress.wallWipes, 0)
+        XCTAssertEqual(store.progress.wallTotalWipes, 7, "level-ups don't erase the wall history")
+        let mcp = MCPHandler(store: store)
+        let expected = Move.gain(store.progress) + Move.goldMemories(store.progress.gold)
+        let r = mcp.handle(["jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                            "params": ["name": "move_desk", "arguments": ["confirm": true]]])
+        let text = (((r?["result"] as? [String: Any])?["content"] as? [[String: Any]])?.first?["text"] as? String) ?? ""
+        XCTAssertTrue(text.contains("\"gainedTotal\" : \(expected)"), text)
+    }
+
+    @MainActor
+    func testCaptainRunsTheLoopWithoutAI() {
+        var p = deepRun(best: 40, levels: 1)
+        p.gold = 50_000
+        let store = GameStore(progress: p, persist: false)
+        store.settings.autoCaptain = true
+        store.settings.captain.moveGain = 10                        // make a move reachable in a short test
+        let memories0 = store.progress.memories
+        store.runCaptain(now: Date())
+        XCTAssertGreaterThan(store.progress.memories, memories0, "moved")
+        XCTAssertEqual(store.progress.tactic, .charge)
+        XCTAssertEqual(store.progress.gold, 0, "leftover gold became memories")
+        XCTAssertEqual(store.progress.regionIndex, 0, "new desk starts over")
+        XCTAssertFalse(store.captainLog.isEmpty)
+        XCTAssertTrue(store.banner?.contains("🤖") ?? false)
+    }
 }
+
+/// Shared deterministic RNG for helpers that need an inout generator.
+enum SplitMixHolder { static var rng = SplitMix64(seed: 99) }

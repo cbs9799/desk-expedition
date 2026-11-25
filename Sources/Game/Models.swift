@@ -297,6 +297,10 @@ struct Progress: Codable, Equatable {
     var farmClears: Int = 0
     var weekTier: Int = 0         // weekly goals claimed this week
     var accessoryMask: Int = 0    // unlocked accessories already announced
+    // 0.2.18
+    var runBestAt: Date?          // when this run first reached runBestFloor (stall detection)
+    var wallTotalWipes: Int = 0   // wipes at the current wall, NOT reset by level-ups
+    var wallSince: Date?          // first wipe at the current wall
 
     var region: Region { Region.all[regionIndex] }
     var isEndless: Bool { region.endless }
@@ -350,6 +354,9 @@ struct Progress: Codable, Equatable {
         farmClears = try c.decodeIfPresent(Int.self, forKey: .farmClears) ?? 0
         weekTier = try c.decodeIfPresent(Int.self, forKey: .weekTier) ?? (weekClaimed ? 1 : 0)
         accessoryMask = try c.decodeIfPresent(Int.self, forKey: .accessoryMask) ?? 0
+        runBestAt = try c.decodeIfPresent(Date.self, forKey: .runBestAt)
+        wallTotalWipes = try c.decodeIfPresent(Int.self, forKey: .wallTotalWipes) ?? 0
+        wallSince = try c.decodeIfPresent(Date.self, forKey: .wallSince)
         regionIndex = min(max(0, regionIndex), Region.all.count - 1)
         unlockedRegion = min(max(0, unlockedRegion), Region.all.count - 1)
     }

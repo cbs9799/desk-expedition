@@ -274,6 +274,16 @@
       }
     },
     "11월 24일 (화) 오후 2:41": {},
+    "AI 없이 규칙대로 45초마다 정비·전술·교환·이사": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rule-based, no AI: upkeep, tactics, exchange and moving every 45 s"
+          }
+        }
+      }
+    },
     "AI 원정대장": {
       "localizations": {
         "en": {
@@ -446,6 +456,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Attack"
+          }
+        }
+      }
+    },
+    "교환 최소층": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exchange from floor"
           }
         }
       }
@@ -842,6 +862,16 @@
         }
       }
     },
+    "이사 이득": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move gain"
+          }
+        }
+      }
+    },
     "이사하기": {
       "localizations": {
         "en": {
@@ -892,6 +922,36 @@
         }
       }
     },
+    "자동 원정대장": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto Captain"
+          }
+        }
+      }
+    },
+    "자동 원정대장 (AI 없이 규칙대로)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto Captain (rule-based, no AI)"
+          }
+        }
+      }
+    },
+    "자동 원정대장 켜짐": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto Captain on"
+          }
+        }
+      }
+    },
     "자동 정리 (업그레이드 장착·잡템 판매)": {
       "localizations": {
         "en": {
@@ -924,6 +984,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Click loot to equip or sell it.\nClick an equipped slot to send it back to the bag."
+          }
+        }
+      }
+    },
+    "정체 시 이득": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gain if stalled"
+          }
+        }
+      }
+    },
+    "정체 판정(분)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stall (min)"
           }
         }
       }
@@ -1116,6 +1196,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sell  🪙 %@"
+          }
+        }
+      }
+    },
+    "판매 등급": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sell up to"
           }
         }
       }

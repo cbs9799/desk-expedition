@@ -59,6 +59,10 @@ struct MenuView: View {
                     store.settings.autoSell = on
                 }
                 ToggleRow(title: "효과음", isOn: store.settings.sound) { store.settings.sound.toggle() }
+                ToggleRow(title: "자동 원정대장 (AI 없이 규칙대로)", isOn: store.settings.autoCaptain) {
+                    store.settings.autoCaptain.toggle()
+                    if store.settings.autoCaptain { store.runCaptain() }
+                }
                 ToggleRow(title: "자동 업데이트 (설치 후 재시작)", isOn: store.settings.autoUpdate) { store.settings.autoUpdate.toggle() }
                 HStack {
                     Text("버전 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-")")

@@ -86,6 +86,9 @@ struct StripHUD: View {
                 .floating()
                 .help("눌러서 장비 일괄 판매")
                 tacticPicker(p)
+                if store.settings.autoCaptain {
+                    PixelIcon(.robot, size: 13).floating().help("자동 원정대장 켜짐")
+                }
                 Spacer()
                 Text("도감 \(p.dex.count)/\(Species.slotCount)").font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(Color(hex: 0x9CF4FF)).floating()

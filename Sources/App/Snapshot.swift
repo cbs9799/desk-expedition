@@ -187,6 +187,32 @@ enum Snapshot {
         _ = mcp
     }
 
+    /// `--captain-soak <hours>`: fast-forwards a run with only the auto captain playing (no AI, no clicks)
+    /// and prints climbs, walls and moves — the loop the feature promises.
+    static func captainSoak(hours: Double) {
+        var p = Progress()
+        p.unlockedRegion = Region.endlessIndex
+        p.regionIndex = Region.endlessIndex
+        p.bestFloor = 60; p.runBestFloor = 60; p.wave = 55; p.memories = 40
+        for i in p.heroes.indices { p.heroes[i].level = 120 }
+        let store = GameStore(progress: p, persist: false)
+        store.settings.autoCaptain = true
+        var moves = 0, peak = 0, lastMoves = 0
+        let steps = Int(hours * 3600 * 10)
+        for s in 0..<steps {
+            GameClock.offset += 0.1
+            store.step(dt: 0.1)
+            peak = max(peak, store.progress.runBestFloor)
+            if store.progress.moves != lastMoves {
+                moves += 1; lastMoves = store.progress.moves
+                print(String(format: "%5.1fh move #%d → memories %d (run peak %d)", Double(s) / 36000, moves, store.progress.memories, peak))
+                peak = 0
+            }
+        }
+        print("captain soak: \(hours)h, moves \(moves), best floor \(store.progress.bestFloor), memories \(store.progress.memories), log \(store.captainLog.count)")
+        for l in store.captainLog.suffix(6) { print("  🤖 \(l.text)") }
+    }
+
     /// `--frames <dir>`: dumps 0.1 s strip frames for eyeballing animation.
     static func dumpFrames(to dir: URL, seconds: Double = 12, showcase: Bool = false) {
         let store = demoStore()

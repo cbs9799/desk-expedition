@@ -150,6 +150,10 @@ enum MCPTools {
                  ["level_up": ["type": "boolean", "description": "골드로 레벨업까지 할지 (기본 true)"],
                   "choose_traits": ["type": "boolean", "description": "열린 특성을 성향대로 고를지 (기본 true)"],
                   "reason": reasonProp]),
+            tool("set_auto_captain", "자동 원정대장(규칙 기반 자동 운영, AI 토큰 없음) 켜기/끄기와 기준값: 이사 이득(기본 150), 정체 시 이사 이득(100), 정체 판정 분(10), 조각 교환 최소층(120), 판매 등급(rare).",
+                 ["enabled": ["type": "boolean"], "move_gain": ["type": "integer"], "move_gain_stalled": ["type": "integer"],
+                  "stall_minutes": ["type": "number"], "exchange_floor": ["type": "integer"],
+                  "sell_up_to": ["type": "string", "enum": ["common", "uncommon", "rare"]], "reason": reasonProp]),
             tool("set_auto_tidy", "자동 정리 설정: 업그레이드 자동 장착, 잡템 자동 판매와 판매 상한 등급. 켜 두면 sell_all을 부를 필요가 없어요.",
                  ["auto_equip": ["type": "boolean"], "auto_sell": ["type": "boolean"],
                   "sell_up_to": ["type": "string", "enum": ["common", "uncommon", "rare"]], "reason": reasonProp]),
@@ -245,10 +249,11 @@ enum MCPTools {
         case "move_desk":
             guard a["confirm"] as? Bool == true else { throw MCPToolError(message: "confirm: true 가 필요해요") }
             guard Move.canMove(store.progress) else { throw MCPToolError(message: "서랍 심층이 열려야 이사할 수 있어요") }
-            let gain = Move.gain(store.progress)
+            let base = Move.gain(store.progress), fromGold = Move.goldMemories(store.progress.gold)
             store.moveDesk()
-            store.aiAct("이사! 추억 조각 +\(gain)", reason: reason)
-            return ["memories": store.progress.memories, "gained": gain, "theme": DeskTheme.names[store.progress.theme]]
+            store.aiAct("이사! 추억 조각 +\(base + fromGold)", reason: reason)
+            return ["memories": store.progress.memories, "gained": base + fromGold, "gainedTotal": base + fromGold,
+                    "gainedBase": base, "gainedFromGold": fromGold, "theme": DeskTheme.names[store.progress.theme]]
 
         case "set_nickname":
             let h = try hero()
@@ -289,28 +294,25 @@ enum MCPTools {
 
         case "upgrade_all":
             let gold0 = store.progress.gold, levels0 = store.progress.heroes.map(\.level), bag0 = store.progress.bag.count
-            let equipped0 = store.progress.heroes.map { [$0.weapon?.id, $0.armor?.id] }
-            store.autoEquip()
-            let equipChanges = zip(equipped0, store.progress.heroes.map { [$0.weapon?.id, $0.armor?.id] }).filter { $0 != $1 }.count
-            let sold = store.sellAll(upTo: Rarity(rawValue: store.settings.autoSellRarity) ?? .uncommon)
-            var traits: [String] = []
-            if (a["choose_traits"] as? Bool) ?? true {
-                let style = AIStyle(rawValue: store.settings.aiStyle) ?? .steady
-                for h in 0..<3 {
-                    while let tier = store.progress.heroes[h].pendingTraitTier {
-                        let opt = TraitPick.choose(store.progress.heroes[h].heroClass, tier: tier, style: style)
-                        store.chooseTrait(h, tier: tier, option: opt)
-                        traits.append("\(store.progress.heroes[h].displayName): \(store.progress.heroes[h].chosenTraitNames.last ?? "")")
-                    }
-                }
-            }
-            let gained = ((a["level_up"] as? Bool) ?? true) ? store.levelUpEvenly() : [0, 0, 0]
-            let summary = "정비: 장착 \(equipChanges)명 · 판매 \(sold.count)개 · 레벨 +\(gained.reduce(0, +))" + (traits.isEmpty ? "" : " · 특성 \(traits.count)개")
+            let r = store.upgradeAll(levelUp: (a["level_up"] as? Bool) ?? true, chooseTraits: (a["choose_traits"] as? Bool) ?? true)
+            let summary = "정비: 장착 \(r.equipChanges)명 · 판매 \(r.sold)개 · 레벨 +\(r.levels.reduce(0, +))" + (r.traits.isEmpty ? "" : " · 특성 \(r.traits.count)개")
             store.aiAct(summary, reason: reason)
-            return ["equipChanges": equipChanges, "sold": sold.count, "soldGold": sold.gold, "traitsChosen": traits,
+            return ["equipChanges": r.equipChanges, "sold": r.sold, "soldGold": r.soldGold, "traitsChosen": r.traits,
                     "levels": zip(levels0, store.progress.heroes.map(\.level)).map { "\($0)→\($1)" },
-                    "goldSpent": gold0 + sold.gold - store.progress.gold, "goldLeft": store.progress.gold,
+                    "goldSpent": gold0 + r.soldGold - store.progress.gold, "goldLeft": store.progress.gold,
                     "bag": "\(bag0)→\(store.progress.bag.count)", "wall": wallJSON(store)]
+
+        case "set_auto_captain":
+            var s = store.settings
+            if let v = a["enabled"] as? Bool { s.autoCaptain = v }
+            if let v = int(a["move_gain"]) { s.captain.moveGain = max(1, v) }
+            if let v = int(a["move_gain_stalled"]) { s.captain.moveGainStalled = max(1, v) }
+            if let v = a["stall_minutes"] as? Double ?? (int(a["stall_minutes"]).map(Double.init)) { s.captain.stallMinutes = max(1, v) }
+            if let v = int(a["exchange_floor"]) { s.captain.exchangeFloor = max(0, v) }
+            if let r = a["sell_up_to"] as? String, let i = ["common", "uncommon", "rare"].firstIndex(of: r) { s.captain.sellUpTo = Rarity(rawValue: i)! }
+            store.settings = s
+            store.aiAct("자동 원정대장 \(s.autoCaptain ? "켬" : "끔")", reason: reason)
+            return captainJSON(store)
 
         case "set_auto_tidy":
             if let e = a["auto_equip"] as? Bool { store.settings.autoEquip = e }
@@ -333,9 +335,20 @@ enum MCPTools {
 
     // MARK: Snapshots
 
+    static func captainJSON(_ store: GameStore) -> [String: Any] {
+        let c = store.settings.captain
+        return ["enabled": store.settings.autoCaptain, "moveGain": c.moveGain, "moveGainStalled": c.moveGainStalled,
+                "stallMinutes": c.stallMinutes, "exchangeFloor": c.exchangeFloor, "sellUpTo": "\(c.sellUpTo)",
+                "recent": store.captainLog.suffix(5).map(\.text)]
+    }
+
     static func wallJSON(_ store: GameStore) -> [String: Any] {
         let p = store.progress
         return ["farming": p.farmCap > 0, "farmAt": p.farmCap, "wipesAtWall": p.wallWipes,
+                "totalWipesAtWall": p.wallTotalWipes,
+                "minutesAtWall": p.wallSince.map { Int(Date().timeIntervalSince($0) / 60) } ?? 0,
+                "runBestFloor": p.runBestFloor,
+                "minutesSinceRunBest": Int(AutoCaptain.stallMinutes(p, now: Date())),
                 "hint": p.farmCap > 0 ? "벽에 막혀 아래에서 파밍 중이에요. 레벨업·장비·전술·특성을 바꾸면 다시 도전해요. 계속 막히면 이사도 방법이에요." : ""]
     }
 
@@ -378,6 +391,7 @@ enum MCPTools {
             "recentEvents": store.events.suffix(12).map { ["at": iso($0.date), "text": $0.text] },
             "tactic": ["current": "\(p.tactic)", "effect": p.tactic.desc],
             "wall": wallJSON(store),
+            "autoCaptain": captainJSON(store),
             "autoTidy": ["autoEquip": store.settings.autoEquip, "autoSell": store.settings.autoSell,
                          "sellUpTo": ["common", "uncommon", "rare"][store.settings.autoSellRarity]],
             "mastery": ["stars": Mastery.totalStars(p), "maxStars": Mastery.maxStars, "regionSetsComplete": Mastery.completedRegions(p)],

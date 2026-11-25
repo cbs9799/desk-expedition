@@ -339,7 +339,12 @@ enum Engine {
             report.wipes += 1
             p.wipes += 1
             let wallAt = Wall.key(p), stage = p.stageText
-            if p.wallKey == wallAt { p.wallWipes += 1 } else { p.wallKey = wallAt; p.wallWipes = 1 }
+            if p.wallKey == wallAt {
+                p.wallWipes += 1
+                p.wallTotalWipes += 1
+            } else {
+                p.wallKey = wallAt; p.wallWipes = 1; p.wallTotalWipes = 1; p.wallSince = GameClock.now()
+            }
             Journal.unlock("first_wipe", in: &p, report: &report)
             p.wave = max(1, p.wave - 3)
             if p.wallWipes >= Wall.wipesToFarm && p.farmCap == 0 {
@@ -371,7 +376,7 @@ enum Engine {
                     report.bossesDefeated.append("심층 \(p.wave)층 보스")
                 }
                 p.bestFloor = max(p.bestFloor, p.wave)
-                p.runBestFloor = max(p.runBestFloor, p.wave)
+                if p.wave > p.runBestFloor { p.runBestFloor = p.wave; p.runBestAt = GameClock.now() }
                 for f in [10, 20, 30, 50, 100] where p.wave >= f { Journal.unlock("floor\(f)", in: &p, report: &report) }
                 if p.wave >= 30, !p.trophies.contains(5) { p.trophies.insert(5); report.trophies.append(5) }
                 p.wave += 1

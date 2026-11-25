@@ -243,7 +243,7 @@ final class AIChat {
             "level_up": "레벨업", "equip": "장착", "auto_equip": "최적 장착", "sell_item": "판매", "sell_all": "일괄 판매",
             "select_region": "지역 이동", "move_desk": "이사", "set_nickname": "이름 변경", "set_accessory": "꾸미기",
             "choose_trait": "특성 선택", "set_tactic": "전술 변경", "exchange_shards": "조각 교환", "say": "한마디",
-            "upgrade_all": "한 번에 정비", "set_auto_tidy": "자동 정리 설정",
+            "upgrade_all": "한 번에 정비", "set_auto_tidy": "자동 정리 설정", "set_auto_captain": "자동 원정대장 설정",
         ]
         return L10n.t(ko[name] ?? name)
     }

@@ -40,6 +40,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        if let i = args.firstIndex(of: "--captain-soak"), args.indices.contains(i + 1) {
+            Snapshot.captainSoak(hours: Double(args[i + 1]) ?? 3)
+            NSApp.terminate(nil)
+            return
+        }
         if let i = args.firstIndex(of: "--chat-test"), args.indices.contains(i + 2) {
             Snapshot.chatTest(provider: args[i + 1], prompts: Array(args[(i + 2)...]).filter { !$0.hasPrefix("-") })
             NSApp.terminate(nil)
