@@ -367,4 +367,130 @@ final class EngineTests: XCTestCase {
         XCTAssertEqual(store.progress.bag.map(\.name), ["upgrade"])
         XCTAssertEqual(store.sellAll(upTo: .legendary).count, 0)
     }
+
+    // MARK: 0.2.17 feedback fixes
+
+    func testWallDropsToFarmingAndHoldsUntilStronger() {
+        var rng = SplitMix64(seed: 31)
+        var p = Progress()
+        p.unlockedRegion = Region.endlessIndex
+        p.regionIndex = Region.endlessIndex
+        p.wave = 40                                  // far too deep for a level-1 party
+        var b = Engine.newBattle(for: p)
+        var wall: String?
+        for _ in 0..<12_000 {
+            let r = Engine.tick(&p, &b, dt: 0.1, rng: &rng)
+            if let w = r.wallHit { wall = w; break }
+        }
+        XCTAssertNotNil(wall, "three wipes at one floor switch to farming")
+        XCTAssertGreaterThan(p.farmCap, 0)
+        let cap = p.farmCap
+        for _ in 0..<3_000 { _ = Engine.tick(&p, &b, dt: 0.1, rng: &rng) }
+        XCTAssertLessThanOrEqual(p.wave, cap, "farming holds below the wall")
+    }
+
+    @MainActor
+    func testGettingStrongerRetriesTheWall() {
+        var p = Progress()
+        p.farmCap = 5; p.wallWipes = 3; p.gold = 1_000
+        let store = GameStore(progress: p, persist: false)
+        store.levelUp(0)
+        XCTAssertEqual(store.progress.farmCap, 0)
+    }
+
+    func testWeaponsBelongToAClass() {
+        var rng = SplitMix64(seed: 41)
+        for _ in 0..<200 {
+            let it = Engine.makeItem(region: 1, boss: true, slot: .weapon, rng: &rng)
+            XCTAssertNotNil(it.affinity, "\(it.name) should be a class weapon")
+        }
+        let staff = Item(slot: .weapon, rarity: .legendary, name: "x 크레용 지팡이", power: 100, regionIndex: 0)
+        XCTAssertEqual(staff.affinity, .mage)
+        XCTAssertEqual(staff.effectivePower(for: .archer), 50)
+        XCTAssertEqual(staff.effectivePower(for: .mage), 100)
+    }
+
+    @MainActor
+    func testAutoEquipGivesWeaponsToTheirClass() {
+        var p = Progress()
+        p.bag = [Item(slot: .weapon, rarity: .legendary, name: "a 크레용 지팡이", power: 500, regionIndex: 0),
+                 Item(slot: .weapon, rarity: .rare, name: "b 클립 활", power: 80, regionIndex: 0)]
+        let store = GameStore(progress: p, persist: false)
+        store.autoEquip()
+        XCTAssertEqual(store.progress.heroes[2].weapon?.name, "a 크레용 지팡이")
+        XCTAssertEqual(store.progress.heroes[1].weapon?.name, "b 클립 활")
+        XCTAssertNil(store.progress.heroes[0].weapon)
+    }
+
+    @MainActor
+    func testEvenLevelUpKeepsHeroesTogether() {
+        var p = Progress()
+        p.heroes[0].level = 10
+        p.gold = 5_000
+        let store = GameStore(progress: p, persist: false)
+        store.levelUpEvenly()
+        let levels = store.progress.heroes.map(\.level)
+        XCTAssertLessThanOrEqual((levels.max() ?? 0) - (levels.min() ?? 0), 1)
+        XCTAssertLessThan(store.progress.gold, store.progress.heroes.map(\.levelUpCost).min() ?? 0)
+    }
+
+    @MainActor
+    func testMovingConvertsLeftoverGoldAndResetsTraits() {
+        var p = Progress()
+        p.unlockedRegion = Region.endlessIndex
+        p.gold = 55_890_000
+        p.heroes[0].level = 60
+        p.heroes[0].traits = [0, 1, 0]
+        let base = Move.gain(p)
+        let store = GameStore(progress: p, persist: false)
+        store.moveDesk()
+        XCTAssertEqual(store.progress.memories, base + Move.goldMemories(55_890_000))
+        XCTAssertGreaterThan(Move.goldMemories(55_890_000), 5)
+        XCTAssertNil(store.progress.heroes[0].traits)
+    }
+
+    func testWeeklyGoalsHaveTiers() {
+        var rng = SplitMix64(seed: 2)
+        var p = Progress()
+        p.weekKey = WeeklyRule.weekKey()
+        p.weekKills = 2_999
+        p.weekTier = 1
+        var r = TickReport()
+        let m = Monster(kind: 0, name: "x", maxHP: 1, hp: 0, atk: 1, x: 0, isBoss: false, attackTimer: 1)
+        Engine.reward(for: m, &p, rng: &rng, report: &r)
+        XCTAssertEqual(p.weekTier, 2)
+        XCTAssertEqual(p.memories, 1)
+        XCTAssertEqual(WeeklyGoal.next(p), 10_000)
+    }
+
+    func testMasteryAndRegionSets() {
+        var p = Progress()
+        let sp = Species.all[0]
+        p.dex[Dex.key(sp.id, .normal)] = DexEntry(count: 150, first: Date())
+        XCTAssertEqual(Mastery.stars(sp, p), 2)
+        for s in Species.all where s.region == 0 { for v in s.variants { p.dex[Dex.key(s.id, v)] = DexEntry(count: 1, first: Date()) } }
+        XCTAssertTrue(Mastery.regionComplete(0, p))
+        XCTAssertEqual(Mastery.attackBonus(p), 1.03, accuracy: 0.0001)
+        XCTAssertFalse(Accessory.unlocked(2, p))
+        p.bossKills = 10
+        XCTAssertTrue(Accessory.unlocked(2, p))
+    }
+
+    @MainActor
+    func testMCPUpgradeAllDoesEverythingInOneCall() {
+        var p = Progress()
+        p.gold = 20_000
+        p.heroes[1].level = 10
+        p.bag = [Item(slot: .weapon, rarity: .rare, name: "a 클립 활", power: 60, regionIndex: 0),
+                 Item(slot: .armor, rarity: .common, name: "b 단추 방패", power: 1, regionIndex: 0)]
+        let store = GameStore(progress: p, persist: false)
+        let mcp = MCPHandler(store: store)
+        let r = mcp.handle(["jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                            "params": ["name": "upgrade_all", "arguments": ["reason": "테스트"]]])
+        let res = r?["result"] as? [String: Any]
+        XCTAssertEqual(res?["isError"] as? Bool, false)
+        XCTAssertEqual(store.progress.heroes[1].weapon?.name, "a 클립 활")
+        XCTAssertNotNil(store.progress.heroes[1].trait(tier: 0), "pending trait chosen")
+        XCTAssertGreaterThan(store.progress.heroes[0].level, 1)
+    }
 }

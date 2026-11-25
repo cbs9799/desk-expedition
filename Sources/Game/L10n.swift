@@ -20,6 +20,12 @@ enum L10n {
     }
 
     static let en: [String: String] = [
+        "고르게 레벨업": "Even level-up", "벽이에요": "Wall reached",
+        "아래에서 파밍하며 골드를 모아요. 레벨업·전술·장비를 바꾸면 다시 도전해요": "farming below for gold; level up or change tactics/gear to try again",
+        "새 꾸미기": "New style", "본부에서 씌워 보세요": "try it on in HQ", "잠김": "Locked",
+        "보스 10회 처치": "10 boss kills", "도감 20칸": "20 dex entries", "영웅 Lv.25": "a hero at Lv.25", "심층 50층": "depth floor 50",
+        "전사 전용": "Warrior only", "궁수 전용": "Archer only", "마법사 전용": "Mage only", "파밍": "farming",
+        "형광펜 지팡이": "Highlighter Staff",
         "대장 일지": "Captain's log", "이번 주": "This week", "도감 조각": "Dex shards", "동행": "Companions",
         "전리품 수레": "Loot cart", "보스 3회": "3 boss kills", "후원자": "Supporter", "개": "", "골드": "gold",
         "을 설치하고 다시 시작해요": " — installing and restarting", "새 버전": "New version",

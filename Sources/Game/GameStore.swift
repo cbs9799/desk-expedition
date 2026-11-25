@@ -27,6 +27,8 @@ struct StripSettings: Equatable {
     var stripScale = 1.0
     /// Check, download, install and relaunch automatically when a new version is out.
     var autoUpdate = true
+    /// Auto-sell spares up to this rarity (0 common, 1 uncommon, 2 rare).
+    var autoSellRarity = 1
     static let scaleRange = 0.5...1.5
 }
 
@@ -169,8 +171,21 @@ final class GameStore {
         for d in report.drops where d.rarity >= .rare { logEvent("\(d.rarity.name) 전리품: \(d.name)") }
         for n in report.newDex { logEvent("도감 등록: \(n)") }
         if report.wipes > 0 { logEvent("전멸 → 3웨이브 후퇴 (\(progress.stageText))") }
+        if let stage = report.wallHit {
+            showBanner(L10n.t("벽이에요") + " (\(stage)): " + L10n.t("아래에서 파밍하며 골드를 모아요. 레벨업·전술·장비를 바꾸면 다시 도전해요"), seconds: 10)
+            logEvent("벽: \(stage)에서 \(Wall.wipesToFarm)번 전멸 → 파밍 전환")
+        }
+        if report.wallRetry { logEvent("파밍 \(Wall.retryAfterClears)회 → 벽에 다시 도전") }
+        let mask = Accessory.mask(progress)
+        if mask & ~progress.accessoryMask != 0 {
+            let fresh = Accessory.all.indices.filter { mask & (1 << $0) != 0 && progress.accessoryMask & (1 << $0) == 0 && $0 > 0 }
+            if progress.accessoryMask != 0, let i = fresh.first {
+                showBanner(L10n.t("새 꾸미기") + ": " + L10n.t(Accessory.all[i]) + " — " + L10n.t("본부에서 씌워 보세요"), seconds: 6)
+            }
+            progress.accessoryMask = mask
+        }
         if report.weeklyGoal {
-            showBanner("주간 목표 달성! \(WeeklyRule.goalKills)마리 처치 · 추억 조각 +1", seconds: 6)
+            showBanner("주간 목표 \(progress.weekTier)단계 달성! 추억 조각 +\(WeeklyGoal.rewards[max(0, progress.weekTier - 1)])", seconds: 6)
             logEvent("주간 목표 달성 → 추억 조각 +1")
         }
         if !report.drops.isEmpty { autoTidy() }
@@ -218,6 +233,7 @@ final class GameStore {
         progress.heroes[heroIndex].level += 1
         adjustHP(heroIndex, oldMax: oldMax)
         levelUps[heroIndex] += 1
+        retryWall()
         var r = TickReport()
         for lv in [10, 25, 50, 100] where progress.heroes[heroIndex].level >= lv {
             Journal.unlock("level\(lv)", in: &progress, report: &r)
@@ -231,9 +247,11 @@ final class GameStore {
     /// Dex, journal, trophies, uniques, names and hats stay.
     func moveDesk() {
         guard Move.canMove(progress) else { return }
-        let gain = Move.gain(progress)
+        let goldBonus = Move.goldMemories(progress.gold)
+        let gain = Move.gain(progress) + goldBonus
         var p = progress
         p.memories += gain
+        p.farmCap = 0; p.wallWipes = 0; p.wallKey = -1
         p.moves += 1
         p.gold = 0
         p.bag = []
@@ -244,6 +262,7 @@ final class GameStore {
         p.bagFullNotified = false
         for i in p.heroes.indices {
             p.heroes[i].level = 1
+            p.heroes[i].traits = nil          // #5: pick a new build every move
             p.heroes[i].weapon = nil
             p.heroes[i].armor = nil
         }
@@ -274,6 +293,7 @@ final class GameStore {
         progress.heroes[heroIndex].setItem(item, in: item.slot)
         adjustHP(heroIndex, oldMax: oldMax)
         refreshBagFlag()
+        retryWall()
     }
 
     func unequip(slot: GearSlot, from heroIndex: Int) {
@@ -328,9 +348,12 @@ final class GameStore {
         for slot in GearSlot.allCases {
             let order: [Int] = slot == .weapon ? [2, 1, 0] : [0, 1, 2]
             for hero in order {
-                let current = progress.heroes[hero].item(in: slot)?.score ?? 0
-                if let best = progress.bag.filter({ $0.slot == slot }).max(by: { $0.score < $1.score }),
-                   best.score > current {
+                let cls = progress.heroes[hero].heroClass
+                let current = progress.heroes[hero].item(in: slot)?.effectiveScore(for: cls) ?? 0
+                // Weapons only go to the class they're made for; armor fits anyone.
+                if let best = progress.bag.filter({ $0.slot == slot && $0.fits(cls) })
+                    .max(by: { $0.effectiveScore(for: cls) < $1.effectiveScore(for: cls) }),
+                   best.effectiveScore(for: cls) > current {
                     equip(best, on: hero)
                 }
             }
@@ -338,7 +361,34 @@ final class GameStore {
     }
 
     func isUpgrade(_ item: Item) -> Bool {
-        progress.heroes.contains { ($0.item(in: item.slot)?.score ?? 0) < item.score }
+        progress.heroes.contains { h in
+            item.fits(h.heroClass) && (h.item(in: item.slot)?.effectiveScore(for: h.heroClass) ?? 0) < item.effectiveScore(for: h.heroClass)
+        }
+    }
+
+    /// #4: spend gold on whoever is lowest (ties: cheapest) until it runs out. Returns levels gained per hero.
+    @discardableResult
+    func levelUpEvenly() -> [Int] {
+        var gained = [0, 0, 0]
+        for _ in 0..<5_000 {
+            let order = progress.heroes.indices.sorted {
+                (progress.heroes[$0].level, progress.heroes[$0].levelUpCost) < (progress.heroes[$1].level, progress.heroes[$1].levelUpCost)
+            }
+            guard let i = order.first, progress.gold >= progress.heroes[i].levelUpCost else { break }
+            levelUp(i)
+            gained[i] += 1
+        }
+        if gained.reduce(0, +) > 0 {
+            showBanner(L10n.t("고르게 레벨업") + ": " + progress.heroes.indices.map { "\(progress.heroes[$0].displayName) +\(gained[$0])" }.joined(separator: " · "), seconds: 5)
+        }
+        return gained
+    }
+
+    /// #1: the party got stronger — go try the wall again.
+    func retryWall() {
+        guard progress.farmCap > 0 || progress.wallWipes > 0 else { return }
+        progress.farmCap = 0
+        progress.wallWipes = 0
     }
 
     /// Desk theme actually shown: the theme pack lets the player pick any; otherwise it follows moves.
@@ -352,7 +402,9 @@ final class GameStore {
     /// Equip upgrades and sell spare low-rarity gear (both optional, on by default).
     func autoTidy() {
         if settings.autoEquip, progress.bag.contains(where: { isUpgrade($0) }) { autoEquip() }
-        if settings.autoSell, progress.bag.count >= Progress.bagCapacity - 6 { sellAll(upTo: .uncommon) }
+        if settings.autoSell, progress.bag.count >= Progress.bagCapacity - 6 {
+            sellAll(upTo: Rarity(rawValue: settings.autoSellRarity) ?? .uncommon)
+        }
     }
 
     func chooseTrait(_ hero: Int, tier: Int, option: Int) {
@@ -364,6 +416,7 @@ final class GameStore {
         t[tier] = option
         progress.heroes[hero].traits = t
         adjustHP(hero, oldMax: oldMax)
+        retryWall()
         let (a, b) = Traits.options(progress.heroes[hero].heroClass, tier: tier)
         showBanner("\(progress.heroes[hero].displayName) 특성: \((option == 0 ? a : b).name)", seconds: 4)
         levelUps[hero] += 1   // reuse the level-up sparkle
@@ -372,6 +425,7 @@ final class GameStore {
     func setTactic(_ t: Tactic) {
         guard progress.tactic != t else { return }
         progress.tactic = t
+        retryWall()
         showBanner("전술: \(t.icon) \(t.name) — \(t.desc)", seconds: 4)
     }
 
@@ -493,6 +547,7 @@ final class GameStore {
         s.aiStyle = d.integer(forKey: "ai.style")
         s.themeOverride = d.object(forKey: "shop.theme") == nil ? -1 : d.integer(forKey: "shop.theme")
         if d.object(forKey: "update.auto") != nil { s.autoUpdate = d.bool(forKey: "update.auto") }
+        if d.object(forKey: "tidy.sellRarity") != nil { s.autoSellRarity = min(2, max(0, d.integer(forKey: "tidy.sellRarity"))) }
         if d.object(forKey: "strip.scale") != nil {
             s.stripScale = min(StripSettings.scaleRange.upperBound, max(StripSettings.scaleRange.lowerBound, d.double(forKey: "strip.scale")))
         }
@@ -515,5 +570,6 @@ final class GameStore {
         d.set(settings.themeOverride, forKey: "shop.theme")
         d.set(settings.stripScale, forKey: "strip.scale")
         d.set(settings.autoUpdate, forKey: "update.auto")
+        d.set(settings.autoSellRarity, forKey: "tidy.sellRarity")
     }
 }

@@ -140,9 +140,10 @@ struct Item: Codable, Identifiable, Hashable {
     /// at the end of the name picks one of 6 weapon / 6 armor icons (old item names fall back by slot).
     var iconRef: (key: String, frame: Int) {
         if let u = unique { return (u < 10 ? "items_unique_a" : "items_unique_b", u % 10) }
+        if slot == .weapon, let w = Gear.weapons.first(where: { name.hasSuffix($0.name) }) { return ("items_base", w.icon) }
         let nouns = slot == .weapon ? Engine.weaponNames : Engine.armorNames
         let i = nouns.firstIndex { name.hasSuffix($0) } ?? (name.unicodeScalars.reduce(0) { $0 &+ Int($1.value) } % nouns.count)
-        return ("items_base", (slot == .weapon ? 0 : 6) + i)
+        return ("items_base", (slot == .weapon ? 0 : 6) + min(i, 5))
     }
 
     /// Rough "goodness" score used for comparisons and auto-equip.
@@ -173,7 +174,7 @@ struct HeroProgress: Codable, Identifiable, Equatable {
     }
 
     var maxHP: Double { (heroClass.baseHP * pow(1.1, Double(level - 1)) + Double(armor?.power ?? 0)) * traitEffect.hp }
-    var attack: Double { (heroClass.baseATK * pow(1.1, Double(level - 1)) + Double(weapon?.power ?? 0)) * traitEffect.atk }
+    var attack: Double { (heroClass.baseATK * pow(1.1, Double(level - 1)) + Double(weapon?.effectivePower(for: heroClass) ?? 0)) * traitEffect.atk }
     var levelUpCost: Int { Int((15 * pow(1.17, Double(level - 1))).rounded()) }
 
     func item(in slot: GearSlot) -> Item? { slot == .weapon ? weapon : armor }
@@ -289,13 +290,22 @@ struct Progress: Codable, Equatable {
     var weekClaimed: Bool = false
     var aiDiary: [DiaryEntry] = []
     var aiDiarySeen: Int = 0
+    // 0.2.17
+    var wallKey: Int = -1
+    var wallWipes: Int = 0
+    var farmCap: Int = 0          // > 0: hold at this wave/floor and farm instead of hitting the wall
+    var farmClears: Int = 0
+    var weekTier: Int = 0         // weekly goals claimed this week
+    var accessoryMask: Int = 0    // unlocked accessories already announced
 
     var region: Region { Region.all[regionIndex] }
     var isEndless: Bool { region.endless }
     var isBossWave: Bool { isEndless ? wave % Region.wavesPerRegion == 0 : wave >= Region.wavesPerRegion }
     var bagIsFull: Bool { bag.count >= Progress.bagCapacity }
     /// "웨이브 3/10" or "심층 27층".
-    var stageText: String { isEndless ? "심층 \(wave)층" : "웨이브 \(wave)/\(Region.wavesPerRegion)" }
+    var stageText: String {
+        (isEndless ? "심층 \(wave)층" : "웨이브 \(wave)/\(Region.wavesPerRegion)") + (farmCap > 0 ? " · 파밍" : "")
+    }
     /// Wave pips position (1…10) — in 서랍 심층 the distance to the next boss floor.
     var pipWave: Int { isEndless ? (wave - 1) % Region.wavesPerRegion + 1 : wave }
     var theme: Int { moves % DeskTheme.names.count }
@@ -334,6 +344,12 @@ struct Progress: Codable, Equatable {
         weekClaimed = try c.decodeIfPresent(Bool.self, forKey: .weekClaimed) ?? false
         aiDiary = try c.decodeIfPresent([DiaryEntry].self, forKey: .aiDiary) ?? []
         aiDiarySeen = try c.decodeIfPresent(Int.self, forKey: .aiDiarySeen) ?? 0
+        wallKey = try c.decodeIfPresent(Int.self, forKey: .wallKey) ?? -1
+        wallWipes = try c.decodeIfPresent(Int.self, forKey: .wallWipes) ?? 0
+        farmCap = try c.decodeIfPresent(Int.self, forKey: .farmCap) ?? 0
+        farmClears = try c.decodeIfPresent(Int.self, forKey: .farmClears) ?? 0
+        weekTier = try c.decodeIfPresent(Int.self, forKey: .weekTier) ?? (weekClaimed ? 1 : 0)
+        accessoryMask = try c.decodeIfPresent(Int.self, forKey: .accessoryMask) ?? 0
         regionIndex = min(max(0, regionIndex), Region.all.count - 1)
         unlockedRegion = min(max(0, unlockedRegion), Region.all.count - 1)
     }

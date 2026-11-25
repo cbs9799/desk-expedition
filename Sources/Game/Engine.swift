@@ -88,6 +88,8 @@ struct TickReport {
     var journalPages: [String] = []
     var trophies: [Int] = []
     var weeklyGoal = false
+    var wallHit: String?
+    var wallRetry = false
 
     mutating func merge(_ other: TickReport) {
         kills += other.kills
@@ -102,6 +104,8 @@ struct TickReport {
         journalPages += other.journalPages
         trophies += other.trophies
         weeklyGoal = weeklyGoal || other.weeklyGoal
+        if let w = other.wallHit { wallHit = w }
+        wallRetry = wallRetry || other.wallRetry
     }
 }
 
@@ -252,6 +256,7 @@ enum Engine {
 
         // 2. Heroes act.
         let week = WeeklyRule.current()
+        let setAttack = Mastery.attackBonus(p)
         for hi in b.heroes.indices where b.heroes[hi].alive {
             let te = p.heroes[hi].traitEffect
             let critChance = 0.1 + te.crit
@@ -261,7 +266,7 @@ enum Engine {
             let inRange = b.monsters.indices.filter { b.monsters[$0].x <= attackRange && b.monsters[$0].hp > 0 }
             guard let front = inRange.first else { continue }
             let cls = p.heroes[hi].heroClass
-            let atk = p.heroes[hi].attack * Move.bonus(p) * p.tactic.atk * week.heroAttack(cls)
+            let atk = p.heroes[hi].attack * Move.bonus(p) * p.tactic.atk * week.heroAttack(cls) * setAttack
             let engaged = b.monsters[front].x <= frontSlotX + 2
             if cls == .warrior && !engaged { continue }
 
@@ -333,8 +338,15 @@ enum Engine {
         if !b.heroes.contains(where: { $0.alive }) {
             report.wipes += 1
             p.wipes += 1
+            let wallAt = Wall.key(p), stage = p.stageText
+            if p.wallKey == wallAt { p.wallWipes += 1 } else { p.wallKey = wallAt; p.wallWipes = 1 }
             Journal.unlock("first_wipe", in: &p, report: &report)
             p.wave = max(1, p.wave - 3)
+            if p.wallWipes >= Wall.wipesToFarm && p.farmCap == 0 {
+                p.farmCap = p.wave            // hold a few stages below the wall and farm
+                p.farmClears = 0
+                report.wallHit = stage
+            }
             b.monsters.removeAll()
             b.phase = .retreating(until: b.time + 3)
             if effects { b.effects.append(Effect(kind: .text("후퇴!"), x: heroX[1], born: b.time)) }
@@ -343,6 +355,16 @@ enum Engine {
 
         // 6. Wave cleared.
         if b.monsters.isEmpty {
+            if p.farmCap > 0 && p.wave >= p.farmCap && !p.isBossWave {
+                p.farmClears += 1
+                if p.farmClears >= Wall.retryAfterClears { p.farmCap = 0; p.wallWipes = 0; report.wallRetry = true }
+                for i in b.heroes.indices {
+                    let maxHP = p.heroes[i].maxHP
+                    b.heroes[i].hp = min(maxHP, max(b.heroes[i].hp, 0) + maxHP * 0.25)
+                }
+                b.phase = .spawning(until: b.time + Engine.marchSeconds * p.tactic.march * week.march)
+                return
+            }
             if p.isEndless {
                 if p.isBossWave {
                     p.bossKills += 1
@@ -399,17 +421,18 @@ enum Engine {
         record(m, &p, report: &report)
         let week = WeeklyRule.current()
         let wk = WeeklyRule.weekKey()
-        if p.weekKey != wk { p.weekKey = wk; p.weekKills = 0; p.weekClaimed = false }
+        if p.weekKey != wk { p.weekKey = wk; p.weekKills = 0; p.weekClaimed = false; p.weekTier = 0 }
         p.weekKills += 1
-        if !p.weekClaimed && p.weekKills >= WeeklyRule.goalKills {
+        while let goal = WeeklyGoal.next(p), p.weekKills >= goal {
+            p.memories += WeeklyGoal.rewards[p.weekTier]
+            p.weekTier += 1
             p.weekClaimed = true
-            p.memories += 1
             report.weeklyGoal = true
         }
         let traitGold = p.heroes.reduce(1.0) { $0 * $1.traitEffect.gold }
         let variantGold = m.isGuest ? 15.0 : m.variant == .crowned ? 5 : m.variant == .shiny ? 3 : 1
         let g = Int((Region.gold(region: p.regionIndex, wave: p.wave) * (m.isBoss ? 12 : 1) * variantGold
-                     * Dex.goldBonus(p) * Move.bonus(p) * p.tactic.gold * week.gold * traitGold).rounded())
+                     * Dex.goldBonus(p) * Mastery.goldBonus(p) * Move.bonus(p) * p.tactic.gold * week.gold * traitGold).rounded())
         p.gold += g
         report.goldGained += g
 
@@ -478,11 +501,11 @@ enum Engine {
         let rarity = forceLegendary ? .legendary : rollRarity(boss: boss, rng: &rng)
         let base = Region.gearBase(region: min(region, Region.storyRegions), slot: slot) * pow(1.04, Double(floor))
         var power = max(1, Int((base * rarity.multiplier * Double.random(in: 0.85...1.15, using: &rng)).rounded()))
-        let noun = (slot == .weapon ? weaponNames : armorNames).randomElement(using: &rng)!
+        let noun = slot == .weapon ? Gear.weapons.randomElement(using: &rng)!.name : armorNames.randomElement(using: &rng)!
         var item = Item(slot: slot, rarity: rarity, name: "\(Region.all[region].adjective) \(noun)",
                         power: power, regionIndex: region)
-        if rarity == .legendary, Double.random(in: 0..<1, using: &rng) < Unique.chance {
-            let u = Int.random(in: 0..<Unique.names.count, using: &rng)
+        if rarity == .legendary, Double.random(in: 0..<1, using: &rng) < Unique.chance,
+           let u = Gear.uniqueInfo.indices.filter({ Gear.uniqueInfo[$0].slot == slot }).randomElement(using: &rng) {
             power = Int((Double(power) * 1.25).rounded())
             item.power = power
             item.unique = u

@@ -84,8 +84,8 @@ final class MCPHandler {
     책상 원정대를 돌봐 줘. 순서:
     0. get_status의 captainStyle(사용자가 고른 대장 성향)을 모든 판단의 기준으로 삼아.
     1. get_status로 현재 상황(골드, 영웅 레벨·체력·공격력, 가방, 지역·웨이브, 최근 사건)을 확인해.
-    2. 가방에 업그레이드가 있으면 auto_equip.
-    3. 골드로 레벨업: 가장 싼 영웅부터, 셋의 레벨 차이가 5 이상 벌어지지 않게. 전멸(wipes)이 잦으면 전사 체력 위주로.
+    2. 대부분은 upgrade_all 한 번으로 정비(장착·판매·특성·고르게 레벨업). 자동 정리가 꺼져 있으면 set_auto_tidy로 켜 둬.
+    3. wall.farming이 true면 벽이야: 전술(set_tactic)을 바꾸거나 업그레이드 후 다시 도전. 오래 막히면 이사를 제안해.
     3-1. 특성(pendingTrait)이 열렸으면 captainStyle에 맞게 choose_trait. 전술(set_tactic)도 성향에 맞게.
     3-2. 도감 조각이 30개 이상이면 exchange_shards로 약한 쪽 장비를 전설로.
     4. 가방이 18칸 넘으면 sell_all로 일반(필요하면 고급)까지 정리. 업그레이드 장비는 자동으로 남아.
@@ -146,6 +146,13 @@ enum MCPTools {
                  required: ["tactic"]),
             tool("exchange_shards", "도감 조각 \(Pity.legendaryPrice)개로 전설 장비(무기/방어구) 하나와 교환.",
                  ["slot": ["type": "string", "enum": ["weapon", "armor"]], "reason": reasonProp], required: ["slot"]),
+            tool("upgrade_all", "한 번에 정비: 업그레이드 장착(직업 맞춤) → 자동 판매 규칙대로 가방 정리 → 열린 특성을 대장 성향대로 선택 → 남은 골드로 고르게 레벨업. 대부분의 턴은 이것 하나면 돼요.",
+                 ["level_up": ["type": "boolean", "description": "골드로 레벨업까지 할지 (기본 true)"],
+                  "choose_traits": ["type": "boolean", "description": "열린 특성을 성향대로 고를지 (기본 true)"],
+                  "reason": reasonProp]),
+            tool("set_auto_tidy", "자동 정리 설정: 업그레이드 자동 장착, 잡템 자동 판매와 판매 상한 등급. 켜 두면 sell_all을 부를 필요가 없어요.",
+                 ["auto_equip": ["type": "boolean"], "auto_sell": ["type": "boolean"],
+                  "sell_up_to": ["type": "string", "enum": ["common", "uncommon", "rare"]], "reason": reasonProp]),
             tool("say", "띠에 짧은 한마디 남기기(행동 없이 사용자에게 알릴 때).",
                  ["message": ["type": "string", "maxLength": 60]], required: ["message"]),
         ]
@@ -252,6 +259,7 @@ enum MCPTools {
         case "set_accessory":
             let h = try hero()
             guard let acc = int(a["accessory"]), Accessory.all.indices.contains(acc) else { throw MCPToolError(message: "accessory 0…\(Accessory.all.count - 1)") }
+            guard Accessory.unlocked(acc, store.progress) else { throw MCPToolError(message: "아직 잠긴 꾸미기예요: \(Accessory.rule(acc))") }
             store.setAccessory(h, acc)
             store.aiAct("\(store.progress.heroes[h].displayName) 꾸미기: \(Accessory.all[acc])", reason: reason)
             return ["hero": h, "accessory": Accessory.all[acc]]
@@ -279,6 +287,39 @@ enum MCPTools {
             store.aiAct("조각 교환 → \(it.name)", reason: reason)
             return ["item": it.name, "id": it.id.uuidString, "shardsLeft": store.progress.shards]
 
+        case "upgrade_all":
+            let gold0 = store.progress.gold, levels0 = store.progress.heroes.map(\.level), bag0 = store.progress.bag.count
+            let equipped0 = store.progress.heroes.map { [$0.weapon?.id, $0.armor?.id] }
+            store.autoEquip()
+            let equipChanges = zip(equipped0, store.progress.heroes.map { [$0.weapon?.id, $0.armor?.id] }).filter { $0 != $1 }.count
+            let sold = store.sellAll(upTo: Rarity(rawValue: store.settings.autoSellRarity) ?? .uncommon)
+            var traits: [String] = []
+            if (a["choose_traits"] as? Bool) ?? true {
+                let style = AIStyle(rawValue: store.settings.aiStyle) ?? .steady
+                for h in 0..<3 {
+                    while let tier = store.progress.heroes[h].pendingTraitTier {
+                        let opt = TraitPick.choose(store.progress.heroes[h].heroClass, tier: tier, style: style)
+                        store.chooseTrait(h, tier: tier, option: opt)
+                        traits.append("\(store.progress.heroes[h].displayName): \(store.progress.heroes[h].chosenTraitNames.last ?? "")")
+                    }
+                }
+            }
+            let gained = ((a["level_up"] as? Bool) ?? true) ? store.levelUpEvenly() : [0, 0, 0]
+            let summary = "정비: 장착 \(equipChanges)명 · 판매 \(sold.count)개 · 레벨 +\(gained.reduce(0, +))" + (traits.isEmpty ? "" : " · 특성 \(traits.count)개")
+            store.aiAct(summary, reason: reason)
+            return ["equipChanges": equipChanges, "sold": sold.count, "soldGold": sold.gold, "traitsChosen": traits,
+                    "levels": zip(levels0, store.progress.heroes.map(\.level)).map { "\($0)→\($1)" },
+                    "goldSpent": gold0 + sold.gold - store.progress.gold, "goldLeft": store.progress.gold,
+                    "bag": "\(bag0)→\(store.progress.bag.count)", "wall": wallJSON(store)]
+
+        case "set_auto_tidy":
+            if let e = a["auto_equip"] as? Bool { store.settings.autoEquip = e }
+            if let s = a["auto_sell"] as? Bool { store.settings.autoSell = s }
+            if let r = a["sell_up_to"] as? String, let i = ["common", "uncommon", "rare"].firstIndex(of: r) { store.settings.autoSellRarity = i }
+            store.aiAct("자동 정리: 장착 \(store.settings.autoEquip ? "켬" : "끔") · 판매 \(store.settings.autoSell ? "켬" : "끔")", reason: reason)
+            return ["autoEquip": store.settings.autoEquip, "autoSell": store.settings.autoSell,
+                    "sellUpTo": ["common", "uncommon", "rare"][store.settings.autoSellRarity]]
+
         case "say":
             let m = String((a["message"] as? String ?? "").prefix(60))
             guard !m.isEmpty else { throw MCPToolError(message: "message가 비었어요") }
@@ -291,6 +332,12 @@ enum MCPTools {
     }
 
     // MARK: Snapshots
+
+    static func wallJSON(_ store: GameStore) -> [String: Any] {
+        let p = store.progress
+        return ["farming": p.farmCap > 0, "farmAt": p.farmCap, "wipesAtWall": p.wallWipes,
+                "hint": p.farmCap > 0 ? "벽에 막혀 아래에서 파밍 중이에요. 레벨업·장비·전술·특성을 바꾸면 다시 도전해요. 계속 막히면 이사도 방법이에요." : ""]
+    }
 
     static func heroJSON(_ i: Int, _ store: GameStore) -> [String: Any] {
         let h = store.progress.heroes[i]
@@ -325,11 +372,20 @@ enum MCPTools {
             "records": ["totalKills": p.totalKills, "bossKills": p.bossKills, "wipes": p.wipes, "bestFloor": p.bestFloor,
                         "trophies": p.trophies.sorted().map { Trophy.names[$0] }],
             "move": ["memories": p.memories, "moves": p.moves, "canMove": Move.canMove(p),
-                     "gainIfMovedNow": Move.canMove(p) ? Move.gain(p) : 0, "bonusPercent": p.memories * 5],
+                     "gainIfMovedNow": Move.canMove(p) ? Move.gain(p) + Move.goldMemories(p.gold) : 0,
+                     "fromLeftoverGold": Move.goldMemories(p.gold), "bonusPercent": p.memories * 5,
+                     "note": "이사하면 레벨·장비·골드·특성이 초기화돼요. 남은 골드는 추억 조각으로 바뀌어요."],
             "recentEvents": store.events.suffix(12).map { ["at": iso($0.date), "text": $0.text] },
             "tactic": ["current": "\(p.tactic)", "effect": p.tactic.desc],
+            "wall": wallJSON(store),
+            "autoTidy": ["autoEquip": store.settings.autoEquip, "autoSell": store.settings.autoSell,
+                         "sellUpTo": ["common", "uncommon", "rare"][store.settings.autoSellRarity]],
+            "mastery": ["stars": Mastery.totalStars(p), "maxStars": Mastery.maxStars, "regionSetsComplete": Mastery.completedRegions(p)],
+            "accessories": Accessory.all.indices.map { ["index": $0, "name": Accessory.all[$0], "unlocked": Accessory.unlocked($0, p), "rule": Accessory.rule($0)] },
             "weekly": ["rule": WeeklyRule.current().name, "effect": WeeklyRule.current().desc,
-                       "kills": p.weekKey == WeeklyRule.weekKey() ? p.weekKills : 0, "goal": WeeklyRule.goalKills, "claimed": p.weekClaimed],
+                       "kills": p.weekKey == WeeklyRule.weekKey() ? p.weekKills : 0,
+                       "tier": p.weekKey == WeeklyRule.weekKey() ? p.weekTier : 0,
+                       "nextGoal": (WeeklyGoal.next(p).map { $0 as Any }) ?? NSNull()],
             "shards": ["count": p.shards, "legendaryPrice": Pity.legendaryPrice,
                        "shinyPity": "\(p.shinyPity)/\(Pity.shinySpawns)", "legendaryPity": "\(p.legendaryPity)/\(Pity.legendaryDrops)"],
             "captainStyle": ["name": AIStyle(rawValue: store.settings.aiStyle)?.name ?? "안정형",
@@ -339,8 +395,12 @@ enum MCPTools {
 
     static func bag(_ store: GameStore) -> [[String: Any]] {
         store.progress.bag.map { it in
-            let forHeroes = (0..<3).filter { (store.progress.heroes[$0].item(in: it.slot)?.score ?? 0) < it.score }
+            let forHeroes = (0..<3).filter { h in
+                let c = store.progress.heroes[h].heroClass
+                return it.fits(c) && (store.progress.heroes[h].item(in: it.slot)?.effectiveScore(for: c) ?? 0) < it.effectiveScore(for: c)
+            }
             return ["id": it.id.uuidString, "name": it.name, "slot": it.slot.rawValue, "rarity": "\(it.rarity)",
+                    "forClass": it.affinity.map { $0.rawValue as Any } ?? NSNull(),
                     "power": it.power, "stat": it.statText, "sellValue": it.sellValue, "upgradeFor": forHeroes]
         }
     }

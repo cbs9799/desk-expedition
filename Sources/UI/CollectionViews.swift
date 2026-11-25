@@ -36,13 +36,13 @@ struct DexView: View {
                 Text("\(p.dex.count)/\(Species.slotCount)").font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(Theme.gold)
                 Spacer()
-                Text("칸마다 골드 +1% (지금 +\(p.dex.count)%) · 반짝이 1/400 · 왕관 1/50 · 희귀 손님은 가끔 웨이브에 끼어들어요")
+                Text("칸마다 골드 +1% · 숙련 별 \(Mastery.totalStars(p))/\(Mastery.maxStars) (골드 +\(String(format: "%.1f", Double(Mastery.totalStars(p)) * 0.1))%) · 지역 세트 \(Mastery.completedRegions(p))/\(Region.storyRegions) (공격 +\(Mastery.completedRegions(p) * 3)%)")
                     .font(.system(size: 10, design: .rounded)).foregroundStyle(Theme.dim)
             }
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 8)], spacing: 8) {
                     ForEach(Species.all) { sp in
-                        DexCard(species: sp, dex: p.dex)
+                        DexCard(species: sp, dex: p.dex, progress: p)
                     }
                 }
             }
@@ -55,6 +55,7 @@ struct DexView: View {
 private struct DexCard: View {
     let species: Species
     let dex: [String: DexEntry]
+    let progress: Progress
 
     var body: some View {
         let seenAny = species.variants.contains { dex[Dex.key(species.id, $0)] != nil }
@@ -68,6 +69,13 @@ private struct DexCard: View {
             Text(seenAny ? species.name : "???")
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .lineLimit(1)
+            if seenAny {
+                let stars = Mastery.stars(species, progress)
+                HStack(spacing: 1) {
+                    ForEach(0..<Mastery.tiers.count, id: \.self) { i in PixelIcon(.star, size: 8).opacity(i < stars ? 1 : 0.2) }
+                }
+                .help("숙련 \(stars)/\(Mastery.tiers.count) · \(Mastery.kills(species, progress).formatted())마리 (다음: \(Mastery.tiers[safe: stars].map { $0.formatted() } ?? "완료"))")
+            }
             HStack(spacing: 4) {
                 ForEach(species.variants, id: \.self) { v in
                     let e = dex[Dex.key(species.id, v)]
@@ -175,9 +183,16 @@ struct RecordsView: View {
                     IconText(icon: .calendar, text: L10n.t("이번 주") + ": \(week.name)", size: 16).font(.system(size: 13, weight: .heavy, design: .rounded))
                     Text(week.desc).font(.system(size: 11, design: .rounded)).foregroundStyle(Theme.dim)
                     let kills = p.weekKey == WeeklyRule.weekKey() ? p.weekKills : 0
+                    let tier = p.weekKey == WeeklyRule.weekKey() ? p.weekTier : 0
                     HStack(spacing: 4) {
-                        if p.weekClaimed { PixelIcon(.check, size: 12) }
-                        Text(p.weekClaimed ? "주간 목표 달성 (추억 조각 +1)" : "주간 목표: \(min(kills, WeeklyRule.goalKills))/\(WeeklyRule.goalKills)마리 → 추억 조각 +1")
+                        ForEach(WeeklyGoal.goals.indices, id: \.self) { i in
+                            PixelIcon(i < tier ? .check : .star, size: 11).opacity(i < tier ? 1 : 0.35)
+                        }
+                        if let goal = WeeklyGoal.goals[safe: tier] {
+                            Text("주간 \(tier + 1)단계: \(min(kills, goal).formatted())/\(goal.formatted())마리 → 추억 조각 +\(WeeklyGoal.rewards[tier])")
+                        } else {
+                            Text("이번 주 목표를 모두 달성했어요")
+                        }
                     }
                     .font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(Theme.gold)
                 }
@@ -239,7 +254,7 @@ struct RecordsView: View {
                     .font(.system(size: 11, design: .rounded)).foregroundStyle(Theme.dim)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack {
-                    Text(Move.canMove(p) ? "지금 이사하면 추억 조각 +\(Move.gain(p)) · 다음 책상: \(DeskTheme.names[(p.moves + 1) % DeskTheme.names.count])"
+                    Text(Move.canMove(p) ? "지금 이사하면 추억 조각 +\(Move.gain(p) + Move.goldMemories(p.gold)) (남은 골드 +\(Move.goldMemories(p.gold)) 포함) · 특성은 다시 골라요 · 다음 책상: \(DeskTheme.names[(p.moves + 1) % DeskTheme.names.count])"
                                          : "서랍 심층이 열리면 이사할 수 있어요")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundStyle(Move.canMove(p) ? Theme.gold : Theme.dim)
@@ -257,7 +272,7 @@ struct RecordsView: View {
             Button("이사하기", role: .destructive) { store.moveDesk() }
             Button("취소", role: .cancel) {}
         } message: {
-            Text("레벨·장비·골드·지역이 초기화되고 추억 조각 \(Move.gain(p))개를 얻어요.")
+            Text("레벨·장비·골드·지역·특성이 초기화되고 추억 조각 \(Move.gain(p) + Move.goldMemories(p.gold))개를 얻어요. 남은 골드 \(p.gold.formatted())은 그중 \(Move.goldMemories(p.gold))개로 바뀌어요.")
         }
     }
 

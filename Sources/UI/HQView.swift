@@ -31,6 +31,19 @@ struct HQView: View {
             default:
                 MaybeScroll {
                     VStack(alignment: .leading, spacing: 14) {
+                        HStack {
+                            Spacer()
+                            Button { store.levelUpEvenly() } label: {
+                                HStack(spacing: 6) {
+                                    PixelIcon(.coin, size: 13)
+                                    Text("골드로 고르게 레벨업")
+                                }
+                            }
+                            .buttonStyle(GameButtonStyle(color: Color(hex: 0x3BA55C), compact: true))
+                            .disabled(store.progress.heroes.map(\.levelUpCost).min() ?? .max > store.progress.gold)
+                            .help("가장 낮은 레벨의 영웅부터 골드가 떨어질 때까지 올려요")
+                        }
+                        .padding(.bottom, -6)
                         HStack(alignment: .top, spacing: 12) {
                             ForEach(Array(p.heroes.enumerated()), id: \.offset) { i, hero in
                                 HeroCard(index: i, hero: hero, hp: store.battle.heroes[safe: i]?.hp ?? hero.maxHP)
@@ -186,7 +199,13 @@ private struct HeroCard: View {
                     Picker("꾸미기", selection: Binding(
                         get: { hero.accessory ?? 0 },
                         set: { store.setAccessory(index, $0) })) {
-                        ForEach(Accessory.all.indices, id: \.self) { i in Text(L10n.t(Accessory.all[i])).tag(i) }
+                        ForEach(Accessory.all.indices, id: \.self) { i in
+                            if Accessory.unlocked(i, store.progress) || hero.accessory == i {   // already worn stays usable
+                                Text(L10n.t(Accessory.all[i])).tag(i)
+                            } else {
+                                Text("\(L10n.t(Accessory.all[i])) — \(L10n.t("잠김")): \(Accessory.rule(i))").tag(i).selectionDisabled()
+                            }
+                        }
                     }
                     .pickerStyle(.menu)
                     .controlSize(.small)
@@ -261,19 +280,22 @@ private struct ItemDetail: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.name).font(.system(size: 14, weight: .heavy, design: .rounded))
                             .foregroundStyle(Color(hex: item.rarity.colorHex))
-                        Text("\(item.rarity.name) \(item.slot.name) · \(item.statText)")
+                        Text("\(item.rarity.name) \(item.slot.name)\(item.classTag.map { " · " + $0 } ?? "") · \(item.statText)")
                             .font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(Theme.dim)
                     }
                 }
                 ForEach(Array(store.progress.heroes.enumerated()), id: \.offset) { i, hero in
                     let current = hero.item(in: item.slot)
-                    let delta = item.power - (current?.power ?? 0)
+                    let delta = item.effectivePower(for: hero.heroClass) - (current?.effectivePower(for: hero.heroClass) ?? 0)
                     Button {
                         store.equip(item, on: i)
                         onDone()
                     } label: {
                         HStack {
                             Text("\(hero.displayName)에게 장착")
+                            if !item.fits(hero.heroClass) {
+                                Text("(50%)").foregroundStyle(Color(hex: 0xFF9C9C))
+                            }
                             Spacer()
                             Text(delta >= 0 ? "+\(delta)" : "\(delta)")
                                 .foregroundStyle(delta >= 0 ? Color(hex: 0x9CF0A8) : Color(hex: 0xFF9C9C))

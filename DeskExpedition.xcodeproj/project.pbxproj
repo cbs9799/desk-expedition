@@ -111,6 +111,7 @@
 		9E9E1A3E2FC420E49533A45C /* GameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EFCFCF6FDC2BAB68894E819 /* GameStore.swift */; };
 		9F38C668C2D41E4644255C4D /* mon_succulent_king.json in Resources */ = {isa = PBXBuildFile; fileRef = D81456633DC96B8123AA4340 /* mon_succulent_king.json */; };
 		9FEE77C4A7AB883B36155B00 /* Collection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146BDB33F293273015841171 /* Collection.swift */; };
+		A134F124EBE757710F4BC4F5 /* Progression.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28CAABB53D05C76E667A82DF /* Progression.swift */; };
 		A2A44C0F4FF9B6292C878F46 /* mon_guest_sugar_prince.png in Resources */ = {isa = PBXBuildFile; fileRef = BF6262F2EFC982BD85D9348F /* mon_guest_sugar_prince.png */; };
 		A913A8693B93B762946F9CA0 /* Migration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ACCF9445C94BFCD901A7E17 /* Migration.swift */; };
 		AD40B10110EC22FA97680017 /* CollectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D63ADE6DF4D990CA52229E1E /* CollectionViews.swift */; };
@@ -209,6 +210,7 @@
 		25CF6090D819A1AC36E17409 /* items_unique_b.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = items_unique_b.json; sourceTree = "<group>"; };
 		27D0566465A306589B246A54 /* DeskExpeditionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeskExpeditionApp.swift; sourceTree = "<group>"; };
 		27D9366F5271AD5C1F6F96B8 /* mon_paper_crane.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mon_paper_crane.png; sourceTree = "<group>"; };
+		28CAABB53D05C76E667A82DF /* Progression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Progression.swift; sourceTree = "<group>"; };
 		29C62DC762B2C3DCDC9F88B4 /* Updater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Updater.swift; sourceTree = "<group>"; };
 		2A318F5E35EE40D02C20AF78 /* props2_monitor.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = props2_monitor.json; sourceTree = "<group>"; };
 		2CD3C449D5701CC3FFEBA2C7 /* bg_monitor_far.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = bg_monitor_far.png; sourceTree = "<group>"; };
@@ -373,6 +375,7 @@
 				9EFCFCF6FDC2BAB68894E819 /* GameStore.swift */,
 				4A7463B096ECB76A5927CF78 /* L10n.swift */,
 				8046CE30A897467640D5B7BD /* Models.swift */,
+				28CAABB53D05C76E667A82DF /* Progression.swift */,
 				4169AF819DDBB9D5AB1503FF /* Systems.swift */,
 			);
 			path = Game;
@@ -875,6 +878,7 @@
 				B7D64A3B3E790A33815C335E /* Offscreen.swift in Sources */,
 				B9F267844F260566ADE02BCB /* OnboardingView.swift in Sources */,
 				E9C0E97C10A7DF08467E262E /* PixelIcon.swift in Sources */,
+				A134F124EBE757710F4BC4F5 /* Progression.swift in Sources */,
 				3573ADA8A4CA61DA8BC737AA /* Snapshot.swift in Sources */,
 				D079A4917A90A6A221C58F51 /* SoundFX.swift in Sources */,
 				B9D9E76E4058CDC8A7512135 /* StripScene.swift in Sources */,
@@ -964,7 +968,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -983,7 +987,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.2.16;
+				MARKETING_VERSION = 0.2.17;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1054,7 +1058,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -1067,7 +1071,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.2.16;
+				MARKETING_VERSION = 0.2.17;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
